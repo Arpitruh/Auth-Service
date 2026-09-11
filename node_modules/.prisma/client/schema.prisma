@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: connection URL lives in prisma.config.ts (Migrate) and is passed
+  // to PrismaClient via the pg driver adapter (runtime). See src/lib/prisma.ts.
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String               @id @default(uuid())
+  email         String               @unique
+  password      String
+  role          String               @default("USER") // USER, ADMIN
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  refreshTokens RefreshToken[]
+  resetTokens   PasswordResetToken[]
+}
+
+model RefreshToken {
+  id              String    @id @default(uuid()) // == jti
+  token           String    @unique // SHA-256 hash, never plaintext
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime? // set when rotated or revoked
+  replacedByToken String? // hash of the successor token (rotation audit trail)
+  device          String? // optional capture at issuance
+  ip              String? // optional capture at issuance
+
+  @@index([token])
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+}
