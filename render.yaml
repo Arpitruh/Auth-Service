@@ -1,0 +1,37 @@
+# Render Blueprint for the Login/Auth Service.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This provisions a free web service that builds from the repo Dockerfile.
+# The database is NOT defined here on purpose: Render's free Postgres expires
+# after ~30 days, so we use a free Neon Postgres instead and paste its
+# connection string into DATABASE_URL below.
+services:
+  - type: web
+    name: login-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    # Render sets $PORT; the app already reads process.env.PORT (defaults 5000).
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically; do not hard-code it.
+      # --- Secrets: set these in the Render dashboard (sync:false = prompt) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      # --- CORS: set to your frontend's real origin ---
+      - key: CLIENT_ORIGIN
+        sync: false
+      # --- Sensible production defaults (override in dashboard if needed) ---
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL
+        value: 7d
+      - key: LOG_LEVEL
+        value: info
