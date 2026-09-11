@@ -4,8 +4,11 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 
-# Prisma 7 + argon2 need build tooling for native bits.
-RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+# Prisma 7 + argon2 need build tooling for native bits. argon2 has no prebuilt
+# binary for this image, so node-gyp compiles it from source and requires
+# python3 + a C/C++ toolchain (make, g++).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
