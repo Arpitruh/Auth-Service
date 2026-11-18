@@ -9,7 +9,7 @@ const app = (id: string): VerifiedTenant => ({
 });
 describe('bounded and leased tenant connections', () => {
   const url = 'postgresql://user:password@tenant.example.neon.tech/tenantdb?sslmode=require';
-  it('reuses a client's connection and closes the least recently used idle client', async () => {
+  it("reuses a client's connection and closes the least recently used idle client", async () => {
     const created: { $disconnect: ReturnType<typeof vi.fn>; $queryRaw: ReturnType<typeof vi.fn> }[] = [];
     const pool = new TenantDatabasePool(1, 0, async () => url, () => {
       const fake = { $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
