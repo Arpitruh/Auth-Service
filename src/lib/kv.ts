@@ -18,6 +18,8 @@ import { Redis } from 'ioredis';
 export interface KvStore {
   /** Get a value, or null if missing/expired. */
   get(key: string): Promise<string | null>;
+  /** Atomic read-and-delete for one-time authorization codes. */
+  consume(key: string): Promise<string | null>;
   /** Set a value with a TTL in seconds. */
   set(key: string, value: string, ttlSeconds: number): Promise<void>;
   /** Delete a key. */
@@ -76,6 +78,12 @@ export class InMemoryKvStore implements KvStore {
       return null;
     }
     return entry.value;
+  }
+
+  async consume(key: string): Promise<string | null> {
+    const value = await this.get(key);
+    this.map.delete(key);
+    return value;
   }
 
   async set(key: string, value: string, ttlSeconds: number): Promise<void> {
@@ -144,6 +152,9 @@ export class RedisKvStore implements KvStore {
   }
   async set(key: string, value: string, ttlSeconds: number): Promise<void> {
     await (await this.ready()).set(this.key(key), value, 'EX', Math.max(1, Math.ceil(ttlSeconds)));
+  }
+  async consume(key: string): Promise<string | null> {
+    return (await this.ready()).getdel(this.key(key));
   }
   async del(key: string): Promise<void> {
     await (await this.ready()).del(this.key(key));
