@@ -26,8 +26,9 @@ export async function provisionTenant(request: ProvisionRequest): Promise<{ appl
       SELECT a."slug" FROM "ControlApplication" a
       JOIN "ControlDatabaseBinding" b ON b."applicationId"=a."id"
       WHERE a."id"=$1 AND a."status"='DRAFT' AND b."provisionState"='PENDING'
-        AND b."mode"=$2 AND b."provider"=$3 FOR UPDATE OF b
-    `, [request.applicationId,request.mode,request.mode === 'MANAGED' ? 'NEON' : 'POSTGRESQL']);
+        AND b."mode"=$2
+        AND ($2='EXTERNAL' OR b."provider"='NEON') FOR UPDATE OF b
+    `, [request.applicationId,request.mode]);
     if (!match.rows[0]) throw new Error('App not eligible for provisioning');
     slug = match.rows[0].slug;
     await db.query('UPDATE "ControlDatabaseBinding" SET "provisionState"=\'PROVISIONING\' WHERE "applicationId"=$1', [request.applicationId]);
