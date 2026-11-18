@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import type { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma.js';
 import { ENV, REFRESH_TOKEN_TTL_DAYS } from '../config/env.js';
@@ -55,6 +56,7 @@ function refreshExpiryDate(): Date {
 async function issueTokens(
   user: PublicUser,
   ctx: IssueContext = {},
+  client: Pick<Prisma.TransactionClient, 'refreshToken'> = prisma,
 ): Promise<AuthTokens> {
   const jti = randomUUID();
 
@@ -65,7 +67,7 @@ async function issueTokens(
   });
   const refreshToken = signRefreshToken({ sub: user.id, jti });
 
-  await prisma.refreshToken.create({
+  await client.refreshToken.create({
     data: {
       id: jti,
       token: sha256(refreshToken),
@@ -185,7 +187,7 @@ export const authService = {
     });
 
     // Reuse detection: the row is gone, already revoked, or the hash mismatches.
-    if (!stored || stored.revokedAt !== null || stored.token !== presentedHash) {
+    if (!stored || stored.userId !== payload.sub || stored.revokedAt !== null || stored.token !== presentedHash) {
       await revokeFamily(payload.sub, 'reuse_detected');
       logger.error(
         { userId: payload.sub, jti: payload.jti, event: 'token_reuse' },
@@ -215,17 +217,31 @@ export const authService = {
 
     const publicUser = toPublicUser(user);
 
-    // Issue the successor first so we can record its hash on the old row.
-    const tokens = await issueTokens(publicUser, ctx);
-
-    // Mark the presented token revoked and link to its successor (audit trail).
-    await prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: {
-        revokedAt: new Date(),
-        replacedByToken: sha256(tokens.refreshToken),
-      },
+    // Single-use compare-and-swap under one DB transaction.
+    // Concurrent refreshes cannot both issue a valid successor.
+    const tokens = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.refreshToken.updateMany({
+        where: {
+          id: stored.id,
+          userId: payload.sub,
+          token: presentedHash,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { revokedAt: new Date() },
+      });
+      if (claimed.count !== 1) return null;
+      const issued = await issueTokens(publicUser, ctx, tx);
+      await tx.refreshToken.update({
+        where: { id: stored.id },
+        data: { replacedByToken: sha256(issued.refreshToken) },
+      });
+      return issued;
     });
+    if (!tokens) {
+      await revokeFamily(payload.sub, 'concurrent_reuse_detected');
+      throw unauthorized('Refresh token has been revoked.', ErrorCode.TOKEN_REUSE);
+    }
 
     logger.info(
       { userId: user.id, event: 'refresh' },

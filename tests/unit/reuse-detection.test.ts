@@ -20,6 +20,7 @@ vi.mock('../../src/lib/store.js', () => ({
 
 // --- Mock Prisma ---
 const prismaMock = {
+  $transaction: vi.fn(),
   refreshToken: {
     create: vi.fn(),
     findUnique: vi.fn(),
@@ -38,7 +39,19 @@ const { HttpError, ErrorCode } = await import('../../src/lib/errors.js');
 
 beforeEach(() => {
   vi.clearAllMocks();
-  prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 0 });
+  prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+  prismaMock.$transaction.mockImplementation(async (callback: (client: typeof prismaMock) => Promise<unknown>) => callback(prismaMock));
+  it('rejects a losing compare-and-swap refresh without issuing a successor', async () => {
+    const token = signRefreshToken({ sub: 'user-1', jti: 'cas-jti' });
+    prismaMock.refreshToken.findUnique.mockResolvedValue({
+      id: 'cas-jti', userId: 'user-1', token: sha256(token),
+      revokedAt: null, expiresAt: new Date(Date.now() + 100000),
+    });
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com', role: 'USER' });
+    prismaMock.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
+    await expect(authService.refresh(token)).rejects.toMatchObject({ code: ErrorCode.TOKEN_REUSE });
+    expect(prismaMock.refreshToken.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('refresh reuse detection', () => {
@@ -128,7 +141,10 @@ describe('refresh reuse detection', () => {
     expect(result.tokens.accessToken).toBeTruthy();
     expect(result.tokens.refreshToken).toBeTruthy();
 
-    // Old row marked revoked + linked to successor; family NOT bulk-revoked.
+    // Claimed via compare-and-swap, then marked revoked and linked to the successor.
+    expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: jti, token: sha256(token), revokedAt: null }),
+    }));
     expect(prismaMock.refreshToken.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: jti },
@@ -139,6 +155,8 @@ describe('refresh reuse detection', () => {
       }),
     );
     // updateMany (family revocation) must NOT have been called on the happy path.
-    expect(prismaMock.refreshToken.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.refreshToken.updateMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId, revokedAt: null } }),
+    );
   });
 });

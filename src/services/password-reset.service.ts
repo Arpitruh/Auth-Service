@@ -69,21 +69,23 @@ export const passwordResetService = {
 
     const passwordHash = await argon2.hash(newPassword);
 
-    // Atomically: set new password, mark token used, revoke all refresh tokens.
-    await prisma.$transaction([
-      prisma.user.update({
+    // Claim the one-time token and change the password in one transaction.
+    // Concurrent reset requests cannot both consume the same token.
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw invalid();
+      await tx.user.update({
         where: { id: record.userId },
         data: { password: passwordHash },
-      }),
-      prisma.passwordResetToken.update({
-        where: { id: record.id },
-        data: { usedAt: new Date() },
-      }),
-      prisma.refreshToken.updateMany({
+      });
+      await tx.refreshToken.updateMany({
         where: { userId: record.userId, revokedAt: null },
         data: { revokedAt: new Date() },
-      }),
-    ]);
+      });
+    });
 
     logger.warn(
       { userId: record.userId, event: 'password_reset' },
