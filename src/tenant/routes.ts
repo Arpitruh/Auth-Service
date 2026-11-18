@@ -1,6 +1,6 @@
 import { Router } from 'express';
+import { createHash } from 'node:crypto';
 import argon2 from 'argon2';
-import { z } from 'zod';
 import { requireVerifiedTenant } from './context.js';
 import { tenantPool } from './database-pool.js';
 import { issueTenantAccessToken, verifyTenantAccessToken } from './access-token.js';
@@ -18,13 +18,23 @@ const identity = (req: { body?: unknown }) => req.body as { email: string; passw
  * The BFF must also enforce per-IP rate limiting and abuse controls.
  */
 async function throttle(appId: string, email: string): Promise<number> {
-  const hash = (await import('node:crypto')).createHash('sha256').update(email).digest('hex');
+  const hash = createHash('sha256').update(email).digest('hex');
   return kv.incr('tenant:login:'+appId+':'+hash, ENV.LOCKOUT_WINDOW_MINUTES*60);
+}
+
+async function rateLimitTenantRequest(appId: string, action: string, ip: string): Promise<boolean> {
+  const ipHash = createHash('sha256').update(ip).digest('hex');
+  const attempts = await kv.incr('tenant:rate:' + appId + ':' + action + ':' + ipHash,
+    ENV.RATE_LIMIT_WINDOW_MINUTES * 60);
+  return attempts <= ENV.RATE_LIMIT_MAX;
 }
 
 tenantRoutes.post('/register', validate(registerSchema), async (req, res) => {
   const tenant = res.locals.tenant as VerifiedTenant;
   try {
+    if (!await rateLimitTenantRequest(tenant.id, 'register', req.ip ?? 'unknown')) {
+      res.status(429).json({ error: 'Too many registration attempts' }); return;
+    }
     const { email, password } = identity(req);
     const result = await tenantPool.withTenant(tenant, async db => {
       const passwordHash = await argon2.hash(password);
@@ -44,6 +54,9 @@ tenantRoutes.post('/login', validate(loginSchema), async (req, res) => {
   const tenant = res.locals.tenant as VerifiedTenant;
   const { email, password } = identity(req);
   try {
+    if (!await rateLimitTenantRequest(tenant.id, 'login', req.ip ?? 'unknown')) {
+      res.status(429).json({ error: 'Too many login attempts' }); return;
+    }
     const failures = await throttle(tenant.id, email);
     if (failures > ENV.LOCKOUT_THRESHOLD) {
       res.status(429).json({ error: 'Too many attempts' }); return;
@@ -52,7 +65,8 @@ tenantRoutes.post('/login', validate(loginSchema), async (req, res) => {
     if (!user || !(await argon2.verify(user.password, password))) {
       res.status(401).json({ error: 'Invalid credentials' }); return;
     }
-    await kv.del('tenant:login:' + tenant.id + ':' + (await import('node:crypto')).createHash('sha256').update(email).digest('hex'));
+    await kv.del('tenant:login:' + tenant.id + ':' + createHash('sha256').update(email).digest('hex'));
+
     const safe = { id: user.id, email: user.email, role: user.role };
     res.status(200).json({ user: safe,
       accessToken: issueTenantAccessToken(tenant.id, tenant.clientId, safe) });
