@@ -19,6 +19,7 @@ const endpoint = (path: string) => new URL(path, issuer()).toString();
 const cookieName = ENV.IS_PRODUCTION ? '__Host-oidc-flow' : 'oidc_flow';
 function available(): boolean {
   return !!(ENV.OIDC_ISSUER && ENV.OIDC_PRIVATE_KEY_B64 && ENV.OIDC_KEY_ID &&
+    (ENV.OIDC_ISSUER.startsWith('https://') || ENV.NODE_ENV === 'test') &&
     (ENV.REDIS_URL || ENV.NODE_ENV === 'test'));
 }
 function refuse(res: Response): void {
