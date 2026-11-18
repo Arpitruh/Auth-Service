@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { passwordResetService } from '../services/password-reset.service.js';
 import { ENV } from '../config/env.js';
 import { logger } from '../lib/logger.js';
+import { sendPasswordResetEmail } from '../lib/notification-client.js';
 
 export const passwordResetController = {
   /**
@@ -15,17 +16,22 @@ export const passwordResetController = {
       const { email } = req.body as { email: string };
       const rawToken = await passwordResetService.requestReset(email);
 
-      if (rawToken && !ENV.IS_PRODUCTION) {
-        // Stubbed delivery for local/dev testing only. Uses a non-secret key
-        // name (`devResetLink`) so the logger's token redaction does not scrub
-        // it — acceptable because this branch never runs in production.
-        logger.info(
-          {
+      if (rawToken) {
+        if (ENV.NOTIFICATION_SERVICE_URL && ENV.NOTIFICATION_API_KEY) {
+          try {
+            await sendPasswordResetEmail(email, rawToken);
+          } catch (err) {
+            // Do not leak whether the email exists or whether the provider failed.
+            logger.error({ err, event: 'password_reset_delivery_failed' }, 'password reset dispatch failed');
+          }
+        } else if (!ENV.IS_PRODUCTION) {
+          logger.info({
             event: 'forgot_password_dev_token',
-            devResetLink: `${ENV.CLIENT_ORIGIN}/reset-password?token=${rawToken}`,
-          },
-          'DEV ONLY: password reset link (would be emailed in production)',
-        );
+            devResetLink: `${ENV.PASSWORD_RESET_BASE_URL ?? ENV.CLIENT_ORIGIN}/reset-password?token=${rawToken}`,
+          }, 'DEV ONLY: password reset link');
+        } else {
+          logger.error({ event: 'password_reset_delivery_unconfigured' }, 'password reset delivery is not configured');
+        }
       }
 
       res.status(200).json({

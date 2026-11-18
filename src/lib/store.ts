@@ -2,7 +2,7 @@ import { createKvStore, type KvStore } from './kv.js';
 import { ENV } from '../config/env.js';
 
 /**
- * Process-wide shared KV store instance (in-memory fallback today; Redis when
+ * Process-wide shared KV store instance (in-memory fallback locally; Redis when
  * REDIS_URL is provided). Everything that needs cross-request/cross-instance
  * state — the access-token denylist and account-lockout counters — goes
  * through this single instance.

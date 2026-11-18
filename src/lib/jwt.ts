@@ -34,12 +34,13 @@ export function signAccessToken(claims: AccessTokenClaims): {
 } {
   const jti = randomUUID();
   const payload: AccessTokenPayload = { ...claims, jti };
-  const options: SignOptions = { expiresIn: ENV.ACCESS_TOKEN_TTL as ExpiresIn };
+  const options: SignOptions = { algorithm: 'HS256', expiresIn: ENV.ACCESS_TOKEN_TTL as ExpiresIn };
   return { token: jwt.sign(payload, ENV.JWT_ACCESS_SECRET, options), jti };
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {
   const options: SignOptions = {
+    algorithm: 'HS256',
     expiresIn: ENV.REFRESH_TOKEN_TTL as ExpiresIn,
   };
   return jwt.sign(payload, ENV.JWT_REFRESH_SECRET, options);
@@ -56,29 +57,30 @@ function verifyWithGrace<T>(
   previous: string | undefined,
 ): T {
   try {
-    return jwt.verify(token, current) as T;
+    return jwt.verify(token, current, { algorithms: ['HS256'] }) as T;
   } catch (err) {
     if (previous) {
-      return jwt.verify(token, previous) as T;
+      return jwt.verify(token, previous, { algorithms: ['HS256'] }) as T;
     }
     throw err;
   }
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
-  return verifyWithGrace<AccessTokenPayload>(
-    token,
-    ENV.JWT_ACCESS_SECRET,
-    ENV.JWT_ACCESS_SECRET_PREVIOUS,
-  );
+  const claims = verifyWithGrace<AccessTokenPayload>(token, ENV.JWT_ACCESS_SECRET, ENV.JWT_ACCESS_SECRET_PREVIOUS);
+  if (!claims || typeof claims.sub !== 'string' || typeof claims.jti !== 'string' ||
+      typeof claims.email !== 'string' || typeof claims.role !== 'string' || typeof claims.exp !== 'number') {
+    throw new Error('Invalid access token claims');
+  }
+  return claims;
 }
 
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  return verifyWithGrace<RefreshTokenPayload>(
-    token,
-    ENV.JWT_REFRESH_SECRET,
-    ENV.JWT_REFRESH_SECRET_PREVIOUS,
-  );
+  const claims = verifyWithGrace<RefreshTokenPayload>(token, ENV.JWT_REFRESH_SECRET, ENV.JWT_REFRESH_SECRET_PREVIOUS);
+  if (!claims || typeof claims.sub !== 'string' || typeof claims.jti !== 'string' || typeof claims.exp !== 'number') {
+    throw new Error('Invalid refresh token claims');
+  }
+  return claims;
 }
 
 /**

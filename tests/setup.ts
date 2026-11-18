@@ -10,6 +10,7 @@ const defaults: Record<string, string> = {
   ACCESS_TOKEN_TTL: '15m',
   REFRESH_TOKEN_TTL: '7d',
   LOG_LEVEL: 'silent',
+  INTROSPECTION_API_KEYS: 'ci-test-service-introspection-key-not-for-real-use-123456',
   LOCKOUT_THRESHOLD: '5',
   LOCKOUT_WINDOW_MINUTES: '15',
 };

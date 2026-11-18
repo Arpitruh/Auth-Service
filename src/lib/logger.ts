@@ -16,6 +16,7 @@ export const logger = pino({
       'refreshToken',
       'req.headers.authorization',
       'req.headers.cookie',
+      'req.headers["x-auth-service-key"]',
       'res.headers["set-cookie"]',
       '*.password',
       '*.token',

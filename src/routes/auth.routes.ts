@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller.js';
+import { introspectionController } from '../controllers/introspection.controller.js';
+import { requireServiceKey } from '../middlewares/service-auth.middleware.js';
 import { sessionController } from '../controllers/session.controller.js';
 import { passwordResetController } from '../controllers/password-reset.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
@@ -9,8 +11,9 @@ import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  introspectionSchema,
 } from '../schemas/auth.schema.js';
-import { loginRateLimiter, registerRateLimiter } from '../middlewares/rate-limit.js';
+import { loginRateLimiter, loginEmailRateLimiter, registerRateLimiter } from '../middlewares/rate-limit.js';
 
 const router = Router();
 
@@ -25,10 +28,14 @@ router.post(
   '/login',
   loginRateLimiter,
   validate(loginSchema),
+  loginEmailRateLimiter,
   authController.login,
 );
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
+
+// Server-side consumers verify access tokens without sharing the signing secret.
+router.post('/introspect', requireServiceKey, validate(introspectionSchema), introspectionController.introspect);
 
 // Password reset (public; forgot is rate-limited + always 200)
 router.post(

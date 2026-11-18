@@ -32,6 +32,8 @@ const envSchema = z.object({
   PORT: numeric(5000),
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Separate control-plane registry; optional until dashboard rollout.
+  CONTROL_PLANE_DATABASE_URL: z.string().url().optional(),
 
   // JWT secrets (current) + optional previous secrets for rotation grace.
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),
@@ -40,9 +42,11 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET_PREVIOUS: z.string().optional(),
 
   ACCESS_TOKEN_TTL: z.string().default('15m'),
-  REFRESH_TOKEN_TTL: z.string().default('7d'),
+  REFRESH_TOKEN_TTL: z.string().regex(/^\d+[smhd]$/, 'Use duration such as 15m or 7d').default('7d'),
 
   CLIENT_ORIGIN: z.string().default('http://localhost:3000'),
+  CLIENT_ORIGINS: z.string().optional(), // Comma-separated browser origins.
+  INTROSPECTION_API_KEYS: z.string().optional(), // Server-only keys, comma-separated for rotation.
   REFRESH_COOKIE_NAME: z.string().default('refreshToken'),
 
   // Optional Redis. When absent, the in-memory KV fallback is used.
@@ -63,6 +67,9 @@ const envSchema = z.object({
 
   // Password reset token TTL.
   RESET_TOKEN_TTL_MINUTES: numeric(30),
+  NOTIFICATION_SERVICE_URL: z.url().optional(),
+  NOTIFICATION_API_KEY: z.string().min(32).optional(),
+  PASSWORD_RESET_BASE_URL: z.url().optional(),
 
   // Prisma connection pool sizing.
   DB_POOL_SIZE: numeric(10),
@@ -93,5 +100,15 @@ export const ENV = {
   IS_PRODUCTION: data.NODE_ENV === 'production',
 } as const;
 
-// Number of days the refresh token remains valid, used for DB expiry + cookie.
-export const REFRESH_TOKEN_TTL_DAYS = 7;
+/** Consistent JWT, DB row and refresh cookie lifetime. */
+export function refreshTokenTtlMs(raw: string): number {
+  const match = /^(\d+)([smhd])$/.exec(raw);
+  if (!match) throw new Error('Invalid refresh token duration');
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multiplier = unit === 's' ? 1000 : unit === 'm' ? 60_000 : unit === 'h' ? 3_600_000 : 86_400_000;
+  const ttl = amount * multiplier;
+  if (!Number.isSafeInteger(ttl) || ttl < 1000) throw new Error('Refresh token duration is out of range');
+  return ttl;
+}
+export const REFRESH_TOKEN_TTL_MS = refreshTokenTtlMs(ENV.REFRESH_TOKEN_TTL);

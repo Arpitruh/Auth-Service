@@ -1,0 +1,56 @@
+name: Auth Service CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auth_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d auth_ci" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/auth_ci?schema=public
+      RUN_DB_TESTS: '1'
+      RUN_REDIS_TESTS: '1'
+      REDIS_TEST_URL: redis://127.0.0.1:6379
+      CONTROL_PLANE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/auth_control_ci
+      RUN_CONTROL_TESTS: '1'
+      JWT_ACCESS_SECRET: ci-only-not-a-production-access-secret-string
+      JWT_REFRESH_SECRET: ci-only-not-a-production-refresh-secret-string
+      INTROSPECTION_API_KEYS: ci-only-introspection-key-not-for-use-outside-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - name: Create isolated control database
+        run: PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE auth_control_ci'
+      - run: npm run control:migrate
+      - name: Verify repeat control migration is idempotent
+        run: npm run control:migrate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

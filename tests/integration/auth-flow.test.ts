@@ -95,6 +95,35 @@ describe.skipIf(!process.env.RUN_DB_TESTS)('auth flow (DB required)', () => {
       .set('Cookie', rotate.headers['set-cookie']);
     expect(afterFamilyRevoke.status).toBe(401);
   });
+  it('allows only one concurrent refresh to claim a token', async () => {
+    if (!dbReachable) return;
+    const email = `race_${Date.now()}@example.com`;
+    const reg = await request(app).post('/api/v1/auth/register')
+      .send({ email, password: strongPassword });
+    expect(reg.status).toBe(201);
+    const cookie = reg.headers['set-cookie'];
+    const results = await Promise.all([
+      request(app).post('/api/v1/auth/refresh').set('Cookie', cookie),
+      request(app).post('/api/v1/auth/refresh').set('Cookie', cookie),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
+  });
+
+  it('consumes password-reset tokens only once under concurrent requests', async () => {
+    if (!dbReachable) return;
+    const email = `reset_race_${Date.now()}@example.com`;
+    const reg = await request(app).post('/api/v1/auth/register')
+      .send({ email, password: strongPassword });
+    expect(reg.status).toBe(201);
+    const { passwordResetService } = await import('../../src/services/password-reset.service.js');
+    const token = await passwordResetService.requestReset(email);
+    expect(token).toBeTruthy();
+    const results = await Promise.all([
+      request(app).post('/api/v1/auth/reset-password').send({ token, password: 'NewP4ssword!' }),
+      request(app).post('/api/v1/auth/reset-password').send({ token, password: 'OtherP4ssword!' }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
+  });
 });
 
 describe('health (no DB dependency)', () => {

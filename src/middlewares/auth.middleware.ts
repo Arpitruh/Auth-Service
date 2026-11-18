@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../lib/jwt.js';
+import { prisma } from '../lib/prisma.js';
 import { denylist } from '../lib/store.js';
 import { ErrorCode, forbidden, unauthorized } from '../lib/errors.js';
 
@@ -67,15 +68,15 @@ export async function requireAuth(
  * Must run after `requireAuth`.
  */
 export function requireRole(...allowedRoles: string[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      next(unauthorized('Authentication required.'));
-      return;
-    }
-    if (!allowedRoles.includes(req.user.role)) {
-      next(forbidden('Insufficient permissions.'));
-      return;
-    }
-    next();
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) { next(unauthorized('Authentication required.')); return; }
+    try {
+      // Always authorize against the current DB role; JWT role can be stale.
+      const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { role: true } });
+      if (!user) { next(unauthorized('Authentication required.')); return; }
+      if (!allowedRoles.includes(user.role)) { next(forbidden('Insufficient permissions.')); return; }
+      req.user.role = user.role;
+      next();
+    } catch (err) { next(err); }
   };
 }
