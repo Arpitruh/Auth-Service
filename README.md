@@ -4,6 +4,10 @@ A production-ready authentication and session-management service built with Expr
 
 Live demo: `https://login-service-8akx.onrender.com` (free tier — the first request after idle may take ~30-60s to cold-start).
 
+## Application isolation (Phase 1 foundation)
+
+A separate PostgreSQL control-plane registry is now available behind optional `CONTROL_PLANE_DATABASE_URL`, with `npm run control:migrate` for its own versioned schema. It tracks application registrations, exact redirect URIs, provisioning status, audit events and database secret **references**, never app-user records. Current login flows remain on the original legacy database. Tenant DB provisioning, routing and the dashboard are **not yet implemented**. See [CONTROL_PLANE_ARCHITECTURE.md](./CONTROL_PLANE_ARCHITECTURE.md).
+
 ## Reuse across projects
 
 For a Next.js, Express or other backend, use **`POST /api/v1/auth/introspect`** with a backend-only `x-auth-service-key`. It checks the access token, token revocation and *current* user role without sharing the JWT signing secret. See [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md).

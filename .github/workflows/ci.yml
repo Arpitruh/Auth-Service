@@ -49,6 +49,8 @@ jobs:
       - name: Create isolated control database
         run: PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE auth_control_ci'
       - run: npm run control:migrate
+      - name: Verify repeat control migration is idempotent
+        run: npm run control:migrate
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
