@@ -17,8 +17,9 @@ export interface TenantIdentity {
 export function issueTenantAccessToken(
   appId: string, clientId: string, user: { id: string; email: string; role: string },
 ): string {
+  if (!ENV.TENANT_JWT_SECRET) throw new Error('Tenant token issuance is disabled');
   return jwt.sign({ sub: user.id, email: user.email, role: user.role, appId, jti: randomUUID() },
-    ENV.JWT_ACCESS_SECRET,
+    ENV.TENANT_JWT_SECRET,
     { algorithm: 'HS256', issuer: ENV.TENANT_TOKEN_ISSUER,
       audience: clientId, expiresIn: '15m', header: { typ: 'tenant+jwt' } });
 }
@@ -26,11 +27,14 @@ export function issueTenantAccessToken(
  * This is server-to-server BFF token validation, NOT full OIDC.
  */
 export function verifyTenantAccessToken(token: string, appId: string, clientId: string): TenantIdentity {
-  const payload = jwt.verify(token, ENV.JWT_ACCESS_SECRET, {
+  if (!ENV.TENANT_JWT_SECRET) throw new Error('Tenant tokens are disabled');
+  const payload = jwt.verify(token, ENV.TENANT_JWT_SECRET, {
     algorithms: ['HS256'], issuer: ENV.TENANT_TOKEN_ISSUER,
     audience: clientId,
   });
-  if (!payload || typeof payload === 'string') throw new Error('Invalid tenant access token');
+  if (!payload || typeof payload === 'string' || jwt.decode(token, { complete: true })?.header.typ !== 'tenant+jwt') {
+    throw new Error('Invalid tenant access token');
+  }
   const claims = payload as JwtPayload & { email?: unknown; role?: unknown; appId?: unknown; jti?: unknown };
   if (claims.appId !== appId || typeof claims.sub !== 'string' ||
       typeof claims.email !== 'string' || typeof claims.role !== 'string' ||

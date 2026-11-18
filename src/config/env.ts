@@ -40,6 +40,7 @@ const envSchema = z.object({
   TENANT_POOL_IDLE_MS: numeric(60000),
   TENANT_POOL_CONNECTIONS_PER_APP: numeric(2).pipe(z.number().min(1).max(10)),
   TENANT_TOKEN_ISSUER: z.string().url().default('https://auth.example.com/tenant'),
+  TENANT_JWT_SECRET: z.string().min(32).optional(),
 
   // JWT secrets (current) + optional previous secrets for rotation grace.
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),
