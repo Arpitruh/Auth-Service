@@ -190,6 +190,7 @@ oidcRoutes.get('/oauth/userinfo', async (req, res) => {
     const claims = oidcSigner().verifyAccessToken(token);
     if (typeof claims.aud !== 'string' || typeof claims.sub !== 'string' ||
         typeof claims.appId !== 'string') return error(res, 401, 'invalid_token');
+    const userId: string = claims.sub;
     const app = await getApplicationByClientId(claims.aud);
     if (!app || app.status !== 'ACTIVE' || app.id !== claims.appId) {
       return error(res, 401, 'invalid_token');
@@ -199,7 +200,7 @@ oidcRoutes.get('/oauth/userinfo', async (req, res) => {
     const user = await tenantPool.withTenant({
       id: app.id, clientId: app.clientId, status: 'ACTIVE',
       secretRef: binding.secretRef, schemaVersion: binding.schemaVersion,
-    }, db => db.user.findUnique({ where: { id: claims.sub }, select: { id:true, email:true } }));
+    }, db => db.user.findUnique({ where: { id: userId }, select: { id:true, email:true } }));
     if (!user) return error(res, 401, 'invalid_token');
     res.json({ sub: user.id, email: user.email, email_verified: false });
   } catch { error(res, 401, 'invalid_token'); }
