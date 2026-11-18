@@ -4,7 +4,16 @@ import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 const url = process.env.CONTROL_PLANE_DATABASE_URL;
-if (!url) {
+const legacy = process.env.DATABASE_URL;
+function sameDatabase(a, b) {
+  const x = new URL(a), y = new URL(b);
+  const identity = (url) => [url.hostname.toLowerCase(), url.port || '5432', decodeURIComponent(url.username), decodeURIComponent(url.pathname)].join('|');
+  return identity(x) === identity(y);
+}
+if (url && legacy && sameDatabase(url, legacy)) {
+  console.error('Refusing to migrate the legacy user database as a control plane');
+  process.exitCode = 1;
+} else if (!url) {
   console.error('CONTROL_PLANE_DATABASE_URL is required to migrate the central registry');
   process.exitCode = 1;
 } else {

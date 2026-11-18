@@ -3,8 +3,21 @@ import { ENV } from '../config/env.js';
 import { generateClientId } from './client-id.js';
 import { validateRedirectUris } from './redirect-uri.js';
 
+/** Fail closed if the control-plane URL accidentally targets the legacy user DB. */
+export function distinctDatabaseTargets(controlUrl: string, legacyUrl: string): boolean {
+  const target = (value: string) => {
+    const u = new URL(value);
+    if (!['postgresql:','postgres:'].includes(u.protocol)) throw new Error('PostgreSQL URL required');
+    return [u.hostname.toLowerCase(), u.port || '5432', decodeURIComponent(u.username), decodeURIComponent(u.pathname)].join('|');
+  };
+  return target(controlUrl) !== target(legacyUrl);
+}
+
 /** A separate control-plane database, never the existing User database. */
 const url = ENV.CONTROL_PLANE_DATABASE_URL;
+if (url && !distinctDatabaseTargets(url, ENV.DATABASE_URL)) {
+  throw new Error('Control-plane and legacy user databases must be distinct');
+}
 const pool = url ? new Pool({ connectionString: url, max: Math.min(ENV.DB_POOL_SIZE, 5) }) : null;
 
 export interface ApplicationInput {
