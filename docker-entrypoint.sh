@@ -9,5 +9,12 @@ set -e
 echo "[entrypoint] Applying database migrations..."
 npx prisma migrate deploy
 
+# Initialize the independent application registry when explicitly configured.
+# This migration script refuses to target the legacy auth database.
+if [ -n "${CONTROL_PLANE_DATABASE_URL:-}" ]; then
+  echo "[entrypoint] Applying control-plane migrations..."
+  node scripts/migrate-control-plane.mjs
+fi
+
 echo "[entrypoint] Starting server..."
 exec node dist/server.js
