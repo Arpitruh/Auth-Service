@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "control:migrate": "node scripts/migrate-control-plane.mjs"
   },
   "keywords": [],
   "author": "",

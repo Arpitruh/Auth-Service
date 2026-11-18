@@ -30,6 +30,8 @@ jobs:
       RUN_DB_TESTS: '1'
       RUN_REDIS_TESTS: '1'
       REDIS_TEST_URL: redis://127.0.0.1:6379
+      CONTROL_PLANE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/auth_control_ci
+      RUN_CONTROL_TESTS: '1'
       JWT_ACCESS_SECRET: ci-only-not-a-production-access-secret-string
       JWT_REFRESH_SECRET: ci-only-not-a-production-refresh-secret-string
       INTROSPECTION_API_KEYS: ci-only-introspection-key-not-for-use-outside-tests
@@ -44,6 +46,9 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma migrate deploy
+      - name: Create isolated control database
+        run: PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE auth_control_ci'
+      - run: npm run control:migrate
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

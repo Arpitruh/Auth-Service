@@ -31,4 +31,3 @@ CREATE TABLE IF NOT EXISTS "ControlDatabaseBinding" (
   CONSTRAINT "ready_requires_secret" CHECK ("provisionState" <> 'READY' OR "secretRef" IS NOT NULL)
 );
 CREATE INDEX IF NOT EXISTS "ControlApplication_status_idx" ON "ControlApplication" ("status");
-COMMIT;

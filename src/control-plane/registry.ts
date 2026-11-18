@@ -1,4 +1,4 @@
-import { Pool, type PoolClient } from 'pg';
+import { Pool } from 'pg';
 import { ENV } from '../config/env.js';
 import { generateClientId } from './client-id.js';
 import { validateRedirectUris } from './redirect-uri.js';
@@ -68,7 +68,9 @@ export async function registerApplication(input: ApplicationInput): Promise<Regi
       [app.id, validated.provider, validated.mode],
     );
     await db.query('COMMIT');
-    return (await getApplicationByClientId(app.clientId))!;
+    const registered = await getApplicationByClientId(app.clientId);
+    if (!registered) throw new Error('Application registration did not persist');
+    return registered;
   } catch (error) {
     await db.query('ROLLBACK');
     throw error;
