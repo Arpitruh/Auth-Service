@@ -29,7 +29,7 @@ export async function openOperatorSession(res: Response): Promise<string> {
   const sid = randomBytes(32).toString('base64url');
   const csrf = randomBytes(32).toString('base64url');
   await kv.set('operator:session:' + sid, JSON.stringify({
-    operator: ENV.DASHBOARD_OPERATOR_USERNAME, csrf,
+    operator: ENV.DASHBOARD_OPERATOR_USERNAME!, csrf,
   } satisfies OperatorSession), ttlSeconds);
   res.cookie(sessionCookie, sid, { ...cookieOptions(), maxAge: ttlSeconds * 1000 });
   return csrf;
