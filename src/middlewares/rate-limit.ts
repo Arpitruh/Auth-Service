@@ -1,42 +1,35 @@
-import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator, type Options, type Store } from 'express-rate-limit';
 import type { Request } from 'express';
+import { createHash } from 'node:crypto';
 import { ENV } from '../config/env.js';
 import { ErrorCode } from '../lib/errors.js';
+import { kv } from '../lib/store.js';
 
-/**
- * IP + email composite key so credential-stuffing against many accounts from
- * one IP, and distributed attempts against a single account, are both
- * throttled (Requirement 6.1). Complementary to per-account lockout.
- *
- * NOTE: uses express-rate-limit's default in-process memory store, matching
- * the in-memory KV fallback used elsewhere. When REDIS_URL is provisioned,
- * swap in `rate-limit-redis` here so counters are shared across instances
- * (Requirement 6.5 / 11.2).
- */
-function keyGenerator(req: Request): string {
-  const email =
-    typeof req.body?.email === 'string'
-      ? req.body.email.trim().toLowerCase()
-      : '';
-  // ipKeyGenerator normalizes IPv6 addresses into a safe subnet key so IPv6
-  // clients cannot trivially rotate addresses to bypass the limit.
-  const ipKey = ipKeyGenerator(req.ip ?? 'unknown');
-  return `${ipKey}:${email}`;
+/** Shared KV-backed limiter; no process-local counter when REDIS_URL is set. */
+class KvRateLimitStore implements Store {
+  private windowMs = 60_000;
+  constructor(private readonly namespace: string) {}
+  init(options: Options): void { this.windowMs = options.windowMs; }
+  async increment(key: string): Promise<{ totalHits: number; resetTime: Date }> {
+    const totalHits = await kv.incr('rate:' + this.namespace + ':' + key, Math.ceil(this.windowMs / 1000));
+    return { totalHits, resetTime: new Date(Date.now() + this.windowMs) };
+  }
+  async resetKey(key: string): Promise<void> { await kv.del('rate:' + this.namespace + ':' + key); }
 }
-
+function byIp(req: Request): string { return ipKeyGenerator(req.ip ?? '127.0.0.1'); }
+function byEmail(req: Request): string {
+  const value = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  return createHash('sha256').update(value).digest('hex');
+}
 const shared: Partial<Options> = {
-  windowMs: ENV.RATE_LIMIT_WINDOW_MINUTES * 60 * 1000,
+  windowMs: ENV.RATE_LIMIT_WINDOW_MINUTES * 60_000,
   limit: ENV.RATE_LIMIT_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator,
-  message: {
-    error: {
-      code: ErrorCode.RATE_LIMITED,
-      message: 'Too many attempts. Please try again later.',
-    },
-  },
+  message: { error: { code: ErrorCode.RATE_LIMITED, message: 'Too many attempts. Please try later.' } },
 };
 
-export const loginRateLimiter = rateLimit(shared);
-export const registerRateLimiter = rateLimit(shared);
+// Separate limits block IP spraying AND distributed attempts against one email.
+export const loginRateLimiter = rateLimit({ ...shared, keyGenerator: byIp, store: new KvRateLimitStore('login-ip') });
+export const loginEmailRateLimiter = rateLimit({ ...shared, keyGenerator: byEmail, store: new KvRateLimitStore('login-email') });
+export const registerRateLimiter = rateLimit({ ...shared, keyGenerator: byIp, store: new KvRateLimitStore('register-ip') });

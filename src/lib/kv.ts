@@ -1,3 +1,4 @@
+import Redis from 'ioredis';
 /**
  * Shared key-value store abstraction for cross-instance state:
  *   - access-token denylist   (denylist:<jti>)
@@ -106,11 +107,50 @@ export class InMemoryKvStore implements KvStore {
 }
 
 /**
- * Selects the KvStore implementation. Today this always returns the in-memory
- * store. When REDIS_URL support is added, branch here to return a
- * RedisKvStore(redisUrl) instead — no caller changes required.
+ * Real shared storage for multi-instance deployments. Redis keys are scoped
+ * to this service; counter increments and TTL installation are atomic.
+ * All Redis failures propagate and deny authentication rather than silently
+ * switching to process-local revocation state.
  */
-export function createKvStore(_redisUrl?: string | undefined): KvStore {
-  // if (redisUrl) return new RedisKvStore(redisUrl);
-  return new InMemoryKvStore();
+export class RedisKvStore implements KvStore {
+  private readonly redis: Redis;
+  private connecting: Promise<void> | undefined;
+  constructor(url: string) {
+    this.redis = new Redis(url, {
+      lazyConnect: true, maxRetriesPerRequest: 1, enableOfflineQueue: false,
+      retryStrategy: (times) => Math.min(times * 250, 1500),
+    });
+    this.redis.on('error', () => { /* surfaced by awaited commands */ });
+  }
+  private async ready(): Promise<Redis> {
+    if (this.redis.status !== 'ready') {
+      if (!this.connecting) {
+        this.connecting = this.redis.connect().finally(() => { this.connecting = undefined; });
+      }
+      await this.connecting;
+    }
+    return this.redis;
+  }
+  private key(value: string): string { return 'auth-service:' + value; }
+  async get(key: string): Promise<string | null> {
+    return (await this.ready()).get(this.key(key));
+  }
+  async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+    await (await this.ready()).set(this.key(key), value, 'EX', Math.max(1, Math.ceil(ttlSeconds)));
+  }
+  async del(key: string): Promise<void> {
+    await (await this.ready()).del(this.key(key));
+  }
+  async incr(key: string, ttlSeconds: number): Promise<number> {
+    const client = await this.ready();
+    const script = "local n=redis.call('INCR', KEYS[1]); if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; return n";
+    return Number(await client.eval(script, 1, this.key(key), Math.max(1, Math.ceil(ttlSeconds)).toString()));
+  }
+  async has(key: string): Promise<boolean> { return (await this.get(key)) !== null; }
+  async close(): Promise<void> { this.redis.disconnect(); }
+}
+
+/** Without Redis this is usable for local single-instance development only. */
+export function createKvStore(redisUrl?: string): KvStore {
+  return redisUrl ? new RedisKvStore(redisUrl) : new InMemoryKvStore();
 }

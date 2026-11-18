@@ -13,7 +13,7 @@ import {
   resetPasswordSchema,
   introspectionSchema,
 } from '../schemas/auth.schema.js';
-import { loginRateLimiter, registerRateLimiter } from '../middlewares/rate-limit.js';
+import { loginRateLimiter, loginEmailRateLimiter, registerRateLimiter } from '../middlewares/rate-limit.js';
 
 const router = Router();
 
@@ -28,6 +28,7 @@ router.post(
   '/login',
   loginRateLimiter,
   validate(loginSchema),
+  loginEmailRateLimiter,
   authController.login,
 );
 router.post('/refresh', authController.refresh);
