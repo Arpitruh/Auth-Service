@@ -5,6 +5,7 @@ import { prisma } from './lib/prisma.js';
 import { kv } from './lib/store.js';
 import { tenantPool } from './tenant/database-pool.js';
 import { closeOidcPool } from './oidc/app.js';
+import { closeDashboardRepo } from './dashboard/repository.js';
 import { closeTenantCredentials } from './tenant/client-credentials.js';
 import { closeSecretStore } from './provisioning/secrets.js';
 
@@ -31,7 +32,7 @@ async function shutdown(signal: string): Promise<void> {
   server.close(async () => {
     try {
       await tenantPool.close();
-      await Promise.all([closeTenantCredentials(), closeSecretStore(), closeOidcPool()]);
+      await Promise.all([closeTenantCredentials(), closeSecretStore(), closeOidcPool(), closeDashboardRepo()]);
       await prisma.$disconnect();
       await kv.close();
       logger.info({ event: 'shutdown_complete' }, 'clean shutdown');
