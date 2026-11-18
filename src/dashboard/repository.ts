@@ -84,3 +84,40 @@ export async function countTenantUsers(app: DashboardApplication): Promise<numbe
   }, async prisma => prisma.user.count());
 }
 export async function closeDashboardRepo(): Promise<void> { await pool?.end(); }
+
+export interface TenantUserRow {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+}
+/** Query only the database bound to this verified active application. */
+async function withAppDatabase<T>(app: DashboardApplication,
+  fn: (client: import('@prisma/client').PrismaClient) => Promise<T>): Promise<T> {
+  if (app.status !== 'ACTIVE' || app.provisionState !== 'READY')
+    throw new Error('Application not active');
+  const { getDatabaseBindingForAppId } = await import('../control-plane/registry.js');
+  const { tenantPool } = await import('../tenant/database-pool.js');
+  const binding=await getDatabaseBindingForAppId(app.id);
+  if (!binding?.secretRef || !binding.schemaVersion) throw new Error('Tenant database unavailable');
+  return tenantPool.withTenant({
+    id:app.id, clientId:app.clientId, status:'ACTIVE',
+    secretRef:binding.secretRef, schemaVersion:binding.schemaVersion,
+  }, fn);
+}
+export async function listAppUsers(app: DashboardApplication): Promise<TenantUserRow[]> {
+  return withAppDatabase(app, prisma => prisma.user.findMany({
+    take:100, orderBy:{createdAt:'desc'},
+    select:{id:true,email:true,role:true,createdAt:true},
+  }));
+}
+export async function changeAppUserRole(app: DashboardApplication,userId:string,role:string): Promise<void> {
+  if(!/^[a-f0-9-]{36}$/i.test(userId)||!['USER','ADMIN'].includes(role))
+    throw new Error('Invalid role');
+  await withAppDatabase(app, prisma => prisma.user.update({
+    where:{id:userId},data:{role},
+  }));
+  await db().query(`INSERT INTO "ControlApplicationEvent" ("applicationId","action","actor","details")
+    VALUES ($1,'USER_ROLE_CHANGED','system:dashboard-operator',$2::jsonb)`,
+    [app.id,JSON.stringify({userId,role})]);
+}
