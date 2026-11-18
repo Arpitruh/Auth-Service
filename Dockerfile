@@ -15,6 +15,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY prisma ./prisma
+COPY control-plane ./control-plane
+COPY scripts ./scripts
 COPY prisma.config.ts tsconfig.json ./
 COPY src ./src
 
@@ -37,6 +39,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/control-plane ./control-plane
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY package.json ./
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
