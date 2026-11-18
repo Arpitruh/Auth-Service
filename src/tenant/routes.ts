@@ -1,0 +1,77 @@
+import { Router } from 'express';
+import argon2 from 'argon2';
+import { z } from 'zod';
+import { requireVerifiedTenant } from './context.js';
+import { tenantPool } from './database-pool.js';
+import { issueTenantAccessToken, verifyTenantAccessToken } from './access-token.js';
+import { ENV } from '../config/env.js';
+import { kv } from '../lib/store.js';
+import { validate } from '../middlewares/validate.js';
+import { registerSchema, loginSchema } from '../schemas/auth.schema.js';
+import type { VerifiedTenant } from './client-credentials.js';
+
+export const tenantRoutes = Router();
+tenantRoutes.use(requireVerifiedTenant);
+const identity = (req: { body?: unknown }) => req.body as { email: string; password: string };
+
+/** Per-app lockout keeps one app's failed logins from locking another app.
+ * The BFF must also enforce per-IP rate limiting and abuse controls.
+ */
+async function throttle(appId: string, email: string): Promise<number> {
+  const hash = (await import('node:crypto')).createHash('sha256').update(email).digest('hex');
+  return kv.incr('tenant:login:'+appId+':'+hash, ENV.LOCKOUT_WINDOW_MINUTES*60);
+}
+
+tenantRoutes.post('/register', validate(registerSchema), async (req, res) => {
+  const tenant = res.locals.tenant as VerifiedTenant;
+  try {
+    const { email, password } = identity(req);
+    const result = await tenantPool.withTenant(tenant, async db => {
+      const passwordHash = await argon2.hash(password);
+      const user = await db.user.create({ data: { email, password: passwordHash } });
+      return { id: user.id, email: user.email, role: user.role };
+    });
+    res.status(201).json({ user: result,
+      accessToken: issueTenantAccessToken(tenant.id, tenant.clientId, result) });
+  } catch (err) {
+    if (typeof err === 'object' && err !== null && 'code' in err && err.code === 'P2002') {
+      res.status(409).json({ error: 'Account already exists' }); return;
+    }
+    res.status(503).json({ error: 'Tenant registration unavailable' });
+  }
+});
+tenantRoutes.post('/login', validate(loginSchema), async (req, res) => {
+  const tenant = res.locals.tenant as VerifiedTenant;
+  const { email, password } = identity(req);
+  try {
+    const failures = await throttle(tenant.id, email);
+    if (failures > ENV.LOCKOUT_THRESHOLD) {
+      res.status(429).json({ error: 'Too many attempts' }); return;
+    }
+    const user = await tenantPool.withTenant(tenant, db => db.user.findUnique({ where: { email } }));
+    if (!user || !(await argon2.verify(user.password, password))) {
+      res.status(401).json({ error: 'Invalid credentials' }); return;
+    }
+    await kv.del('tenant:login:' + tenant.id + ':' + (await import('node:crypto')).createHash('sha256').update(email).digest('hex'));
+    const safe = { id: user.id, email: user.email, role: user.role };
+    res.status(200).json({ user: safe,
+      accessToken: issueTenantAccessToken(tenant.id, tenant.clientId, safe) });
+  } catch {
+    res.status(503).json({ error: 'Tenant login unavailable' });
+  }
+});
+tenantRoutes.get('/me', async (req, res) => {
+  const tenant = res.locals.tenant as VerifiedTenant;
+  const token = req.header('authorization')?.match(/^Bearer (.+)$/)?.[1];
+  if (!token) { res.status(401).json({ error: 'Access token required' }); return; }
+  try {
+    const claims = verifyTenantAccessToken(token, tenant.id, tenant.clientId);
+    const user = await tenantPool.withTenant(tenant, db => db.user.findUnique({
+      where: { id: claims.sub }, select: { id: true, email: true, role: true },
+    }));
+    if (!user) { res.status(401).json({ error: 'Unknown user' }); return; }
+    res.status(200).json({ user });
+  } catch {
+    res.status(401).json({ error: 'Invalid access token' });
+  }
+});
