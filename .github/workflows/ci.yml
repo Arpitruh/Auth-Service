@@ -18,10 +18,18 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d auth_ci" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/auth_ci?schema=public
       RUN_DB_TESTS: '1'
+      RUN_REDIS_TESTS: '1'
+      REDIS_TEST_URL: redis://127.0.0.1:6379
       JWT_ACCESS_SECRET: ci-only-not-a-production-access-secret-string
       JWT_REFRESH_SECRET: ci-only-not-a-production-refresh-secret-string
       INTROSPECTION_API_KEYS: ci-only-introspection-key-not-for-use-outside-tests
