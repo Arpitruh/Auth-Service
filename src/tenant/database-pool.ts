@@ -69,15 +69,14 @@ export class TenantDatabasePool {
       const db = this.create(connection);
       try { await db.$queryRaw`SELECT 1`; }
       catch (e) { await db.$disconnect(); throw e; }
-      const entry: Entry = { db, refs: 0, lastUsed: Date.now(), secretRef: app.secretRef };
+      const entry: Entry = { db, refs: 1, lastUsed: Date.now(), secretRef: app.secretRef };
       this.cache.set(app.id, entry);
       return entry;
     })();
     this.creating.set(app.id, loading);
     try {
-      const entry = await loading;
-      entry.refs++;
-      return entry;
+      // Initial caller's lease is reserved before making the client visible.
+      return await loading;
     } finally {
       this.creating.delete(app.id);
     }
