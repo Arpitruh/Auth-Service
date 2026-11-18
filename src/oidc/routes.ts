@@ -10,6 +10,7 @@ import { validPkceChallenge, verifyPkce } from './pkce.js';
 import { createPendingAuth, consumePendingAuth, issueAuthorizationCode, consumeAuthorizationCode } from './flow.js';
 import { loginHtml } from './html.js';
 import { kv } from '../lib/store.js';
+import { getApplicationSettings } from '../dashboard/repository.js';
 
 export const oidcRoutes = Router();
 // Hosted login and OAuth token exchange use HTML/standard form encoding.
@@ -124,6 +125,7 @@ oidcRoutes.post('/oauth/authorize/complete', async (req, res) => {
     if (!pending) return error(res, 400, 'expired_request');
     const client = await resolveOidcClient(pending.clientId, pending.redirectUri);
     if (!client || client.id !== pending.appId) return error(res, 400, 'invalid_client');
+    if (!(await getApplicationSettings(client.id)).allowPasswordLogin) return error(res, 403, 'access_denied');
     const email = formValue(form, 'email')?.trim().toLowerCase();
     const password = formValue(form, 'password');
     if (!email || email.length > 254 || !password || password.length > 1024) {
