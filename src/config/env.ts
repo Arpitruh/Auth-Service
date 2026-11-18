@@ -65,6 +65,9 @@ const envSchema = z.object({
 
   // Password reset token TTL.
   RESET_TOKEN_TTL_MINUTES: numeric(30),
+  NOTIFICATION_SERVICE_URL: z.url().optional(),
+  NOTIFICATION_API_KEY: z.string().min(32).optional(),
+  PASSWORD_RESET_BASE_URL: z.url().optional(),
 
   // Prisma connection pool sizing.
   DB_POOL_SIZE: numeric(10),

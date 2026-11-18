@@ -136,3 +136,20 @@ export async function requireIdentity(req: Request, res: Response, next: NextFun
   denylist and lockout counters are process-local until shared storage is built.
 - The password-reset delivery path is a development stub. Integrating the
   Notification Service for production email comes later.
+
+## Auth → Notification Service: real password resets
+
+Configure these variables **on the Auth Service backend**:
+```dotenv
+NOTIFICATION_SERVICE_URL=https://notification-service.example.com
+NOTIFICATION_API_KEY=<auth-service-notification-key>
+PASSWORD_RESET_BASE_URL=https://your-login-frontend.example.com
+```
+On the Notification Service, add the same key under an authenticated client
+`id: "auth-service"`, `channels:["email"]`, and
+`templates:["forgot-password"]`. The sender uses its existing
+`forgot-password.hbs` template with `name`, `resetUrl` and
+`expiresInMinutes`. Reset links are never logged in production.
+Delivery failures return the same generic forgot-password HTTP response to avoid
+email enumeration; monitor server logs for failed notification dispatch.
+For production launch, verify delivery via the notification status endpoint.

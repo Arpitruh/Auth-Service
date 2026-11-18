@@ -10,6 +10,10 @@ For a Next.js, Express or other backend, use **`POST /api/v1/auth/introspect`** 
 
 **Scope:** This service has one global user store and global `USER`/`ADMIN` roles. It is not OAuth/OIDC or multi-tenant authorization. Every app must enforce its own workspace access. The refresh cookie remains same-site only (`SameSite=Strict`).
 
+## Production reset email integration
+
+Configure `NOTIFICATION_SERVICE_URL`, `NOTIFICATION_API_KEY` and `PASSWORD_RESET_BASE_URL` to queue real reset emails using the separate Notification Service. The Notification Service must authorize `auth-service` for `forgot-password`; see [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md). Without these settings, production reset emails are **not delivered**, though the endpoint retains its generic response.
+
 ## Features
 
 - **Email + password auth** with Argon2 password hashing.
