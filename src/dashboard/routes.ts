@@ -9,8 +9,8 @@ import { issueApplicationKey } from '../tenant/client-credentials.js';
 import { dashboardEnabled, checkOperator, openOperatorSession, closeOperatorSession,
   requireOperator, verifyDashboardPost, type OperatorSession } from './auth.js';
 import { listDashboardApps, getDashboardApp, getApplicationSettings,
-  updateApplicationSettings, countTenantUsers } from './repository.js';
-import { appListPage, createAppPage, detailPage, loginPage } from './views.js';
+  updateApplicationSettings, countTenantUsers, listAppUsers, changeAppUserRole } from './repository.js';
+import { appListPage, createAppPage, detailPage, loginPage, appUsersPage } from './views.js';
 
 export const dashboardRoutes = Router();
 dashboardRoutes.use(urlencoded({ extended: false, limit: '16kb' }));
@@ -160,4 +160,27 @@ dashboardRoutes.post('/apps/:id/provision',async(req,res)=>{
     }
     redirect(res,'/dashboard/apps/'+id,'Database ready. Review and activate.');
   }catch{fail(res,'Provisioning failed. Manual recovery may be required.');}
+});
+
+dashboardRoutes.get('/apps/:id/users',async(req,res)=>{
+  const id=appId(req);if(!id){res.status(404).end();return;}
+  const app=await getDashboardApp(id).catch(()=>null);
+  if(!app){res.status(404).end();return;}
+  try{
+    const users=await listAppUsers(app);
+    res.type('html').send(appUsersPage(app,csrf(res),users));
+  }catch{res.status(503).send('Tenant directory unavailable');}
+});
+dashboardRoutes.post('/apps/:id/users/:userId/role',async(req,res)=>{
+  const id=appId(req);
+  const userId=req.params.userId;
+  if(!id||typeof userId!=='string'||!validPost(req,res)){
+    fail(res,'Invalid request');return;
+  }
+  const app=await getDashboardApp(id).catch(()=>null);
+  if(!app){res.status(404).end();return;}
+  try{
+    await changeAppUserRole(app,userId,field(req,'role',10));
+    redirect(res,'/dashboard/apps/'+id+'/users','Role updated');
+  }catch{fail(res,'User role change failed');}
 });
