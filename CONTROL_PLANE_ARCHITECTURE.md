@@ -1,6 +1,6 @@
-# Phase 1 — Database-per-application control plane
+# Database-per-application control plane — Phases 1 and 2
 
-Status: foundation only. This implementation deliberately **does not** route
+Status: separate registry and internal tenant provisioning foundation. This implementation deliberately **does not** route
 existing login/refresh requests to arbitrary tenant databases. Legacy Auth
 continues to use `DATABASE_URL` unchanged, so no existing user is migrated.
 
@@ -12,7 +12,7 @@ continues to use `DATABASE_URL` unchanged, so no existing user is migrated.
   passwords, OAuth tokens, or tenant refresh sessions.**
 - **Tenant identity data plane** (next milestone): a separate, versioned Auth
   database for EACH application, created in a dedicated Neon project by a
-  privileged provisioner or connected by reference. This remains future work.
+  privileged provisioner or connected by reference. Provisioning is implemented as an internal service; tenant auth routing is future work.
 - **Application business data plane**: owned by the consuming application;
   not accessed directly by the central Auth Service.
 
@@ -59,7 +59,7 @@ authorization request must validate the client registration, redirect URI and
 PKCE, and user credentials before issuing tokens. Do not accept a client ID
 from arbitrary browser headers to choose a tenant DB.
 
-## Database provisioning lifecycle (next milestone)
+## Database provisioning lifecycle (Phase 2)
 
 ```
 DRAFT app created → PENDING binding → PROVISIONING

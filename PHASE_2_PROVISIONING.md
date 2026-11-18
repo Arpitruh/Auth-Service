@@ -12,6 +12,7 @@ real Neon project is automatically created by deployment or CI.
 - `NEON_API_KEY`: required only for managed Neon project creation; store in
   the server's secret manager, never in the dashboard/browser.
 - `NEON_ORG_ID`: optional org ID when using a personal API key.
+- `TENANT_DATABASE_ALLOWED_DOMAINS`: comma-separated operator-approved DNS suffixes for external databases. By default only Neon subdomains are allowed; each custom PostgreSQL domain must be explicitly allowlisted. TLS is mandatory.
 - Apply `npm run control:migrate` to the control-plane DB.
 
 ## How provisioning works
@@ -19,7 +20,7 @@ real Neon project is automatically created by deployment or CI.
 2. Trusted internal `provisionTenant({mode:'MANAGED',applicationId})` requests
    its own Neon project. Or `provisionTenant({mode:'EXTERNAL',applicationId,
    connectionUrl})` attaches an isolated PostgreSQL database.
-3. Verify TLS and database target isolation; refuse any nonempty tenant DB.
+3. Verify TLS, host allowlisting and database target isolation; refuse any nonempty tenant DB.
 4. Run existing Prisma Auth migrations against the dedicated tenant DB.
 5. Encrypt its connection string using AES-256-GCM in `ControlSecret`, while
    storing only `secret://apps/<uuid>` in the application binding.
@@ -29,7 +30,7 @@ real Neon project is automatically created by deployment or CI.
 **Safety:** attempts are claimed only once. A timeout or unknown Neon API
 create result is marked ERROR; it must be manually reconciled before any retry
 because a project may already have been created. Project IDs are recorded
-where a successful create response provides one. Never auto-delete a project
+immediately when a successful create response provides one. Never auto-delete a project
 after a failure, as it may contain data. Do not run this on a business DB.
 
 ## Operational limitations / Phase 3 dependencies
@@ -42,6 +43,7 @@ after a failure, as it may contain data. Do not run this on a business DB.
 - Neon API has project quotas and possible charges. An explicit operator
   approval/confirmation and cost display should be implemented before putting
   the create action in any dashboard.
+- DNS hostname allowlists are a first defense; also enforce outbound egress policy and block private-network SSRF in production.
 - For high-value production usage, move encrypted secrets into a managed secret
   manager, add DNS egress allowlisting and network/SSRF controls, and introduce
   dedicated runtime DB roles rather than relying on migration credentials.
