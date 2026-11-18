@@ -34,6 +34,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   // Separate control-plane registry; optional until dashboard rollout.
   CONTROL_PLANE_DATABASE_URL: z.string().url().optional(),
+  CONTROL_PLANE_ENCRYPTION_KEY: z.string().optional(),
 
   // JWT secrets (current) + optional previous secrets for rotation grace.
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),

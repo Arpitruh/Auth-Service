@@ -41,9 +41,19 @@ export async function provisionTenant(request: ProvisionRequest): Promise<{ appl
 
   let projectId: string | undefined;
   try {
-    const connectionString = request.mode === 'MANAGED'
-      ? (await createNeonTenantProject('auth-' + slug)).connectionUrl
-      : request.connectionUrl;
+    let connectionString: string;
+    if (request.mode === 'MANAGED') {
+      const created = await createNeonTenantProject('auth-' + slug);
+      projectId = created.projectId;
+      // Persist the provider resource ID before any subsequent steps can fail.
+      await control().query(
+        'UPDATE "ControlProvisioningAttempt" SET "providerResourceId"=$2 WHERE "applicationId"=$1',
+        [request.applicationId, projectId],
+      );
+      connectionString = created.connectionUrl;
+    } else {
+      connectionString = request.connectionUrl;
+    }
     validateTenantPostgresUrl(connectionString);
     const schemaVersion = await migrateFreshTenantDatabase(connectionString);
     const secretRef = await saveTenantConnectionSecret(request.applicationId, connectionString);

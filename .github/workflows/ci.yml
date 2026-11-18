@@ -32,6 +32,7 @@ jobs:
       REDIS_TEST_URL: redis://127.0.0.1:6379
       CONTROL_PLANE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/auth_control_ci
       RUN_CONTROL_TESTS: '1'
+      CONTROL_PLANE_ENCRYPTION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
       JWT_ACCESS_SECRET: ci-only-not-a-production-access-secret-string
       JWT_REFRESH_SECRET: ci-only-not-a-production-refresh-secret-string
       INTROSPECTION_API_KEYS: ci-only-introspection-key-not-for-use-outside-tests
