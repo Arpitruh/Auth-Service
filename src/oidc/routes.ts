@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, urlencoded, type Response } from 'express';
 import argon2 from 'argon2';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ENV } from '../config/env.js';
@@ -12,6 +12,8 @@ import { loginHtml } from './html.js';
 import { kv } from '../lib/store.js';
 
 export const oidcRoutes = Router();
+// Hosted login and OAuth token exchange use HTML/standard form encoding.
+oidcRoutes.use(urlencoded({ extended: false, limit: '16kb' }));
 const issuer = () => ENV.OIDC_ISSUER!;
 const endpoint = (path: string) => new URL(path, issuer()).toString();
 const cookieName = ENV.IS_PRODUCTION ? '__Host-oidc-flow' : 'oidc_flow';
