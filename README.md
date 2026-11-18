@@ -8,6 +8,10 @@ Live demo: `https://login-service-8akx.onrender.com` (free tier — the first re
 
 A separate PostgreSQL control-plane registry is now available behind optional `CONTROL_PLANE_DATABASE_URL`, with `npm run control:migrate` for its own versioned schema. It tracks application registrations, exact redirect URIs, provisioning status, audit events and database secret **references**, never app-user records. Current login flows remain on the original legacy database. Internal Neon/PostgreSQL provisioning and a separate backend-only tenant routing API are now available. The dashboard and hosted OIDC flows are **not yet implemented**. See [CONTROL_PLANE_ARCHITECTURE.md](./CONTROL_PLANE_ARCHITECTURE.md).
 
+## Hosted OIDC sign-in (Phase 4, opt-in)
+
+The auth server now includes a hosted login form and an initial **Authorization Code + PKCE S256** flow. It publishes OpenID discovery, an RS256 JWKS, short-lived ID/access tokens and UserInfo. It is disabled until RSA signing, issuer and Redis are configured. Users remain in their isolated application databases, and **SSO is disabled**. This is not yet a production-certified provider; see [PHASE_4_OIDC.md](./PHASE_4_OIDC.md).
+
 ## Verified multi-application routing (Phase 3)
 
 The backend-only `/api/v2/tenant/register`, `/login` and `/me` routes verify a registered application **client ID plus its private server-side key**, select its own Auth database through bounded Prisma pooling, and issue short-lived application-audience-scoped JWTs. Legacy `/api/v1/auth/*` stays unchanged. **Never embed the app key in browser/mobile code.** See [PHASE_3_ROUTING.md](./PHASE_3_ROUTING.md). Tenant refresh sessions, hosted login, OIDC/PKCE and the Auth Dashboard are upcoming.
