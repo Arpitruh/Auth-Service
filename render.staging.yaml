@@ -1,0 +1,38 @@
+# Dedicated, opt-in Auth Garden STAGING service.
+# This file does not modify the existing live login-service.
+# Configure through a separate Render Blueprint after reviewing its settings.
+services:
+  - type: web
+    name: auth-garden-staging
+    runtime: docker
+    plan: free
+    branch: feat/reusable-auth-consumers
+    autoDeploy: false
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Legacy Auth needs a dedicated disposable staging identity DB.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      # Independent central application registry. Never point to DATABASE_URL.
+      - key: CONTROL_PLANE_DATABASE_URL
+        sync: false
+      - key: CONTROL_PLANE_ENCRYPTION_KEY
+        sync: false
+      # Shared Redis is mandatory for operator sessions in production mode.
+      - key: REDIS_URL
+        sync: false
+      - key: DASHBOARD_OPERATOR_USERNAME
+        sync: false
+      - key: DASHBOARD_OPERATOR_PASSWORD_HASH
+        sync: false
+      # Staging OIDC is opt-in. Add issuer and RSA keys only after URL exists.
+      - key: LOG_LEVEL
+        value: info
