@@ -72,6 +72,9 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
       typeof claims.email !== 'string' || typeof claims.role !== 'string' || typeof claims.exp !== 'number') {
     throw new Error('Invalid access token claims');
   }
+  if ('appId' in claims || 'aud' in claims || 'iss' in claims) {
+    throw new Error('Tenant token cannot be used on the legacy Auth API');
+  }
   return claims;
 }
 

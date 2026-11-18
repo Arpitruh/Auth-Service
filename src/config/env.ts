@@ -36,6 +36,11 @@ const envSchema = z.object({
   CONTROL_PLANE_DATABASE_URL: z.string().url().optional(),
   CONTROL_PLANE_ENCRYPTION_KEY: z.string().optional(),
   TENANT_DATABASE_ALLOWED_DOMAINS: z.string().optional(),
+  TENANT_POOL_MAX_CLIENTS: numeric(6).pipe(z.number().min(1).max(40)),
+  TENANT_POOL_IDLE_MS: numeric(60000),
+  TENANT_POOL_CONNECTIONS_PER_APP: numeric(2).pipe(z.number().min(1).max(10)),
+  TENANT_TOKEN_ISSUER: z.string().url().default('https://auth.example.com/tenant'),
+  TENANT_JWT_SECRET: z.string().min(32).optional(),
 
   // JWT secrets (current) + optional previous secrets for rotation grace.
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),

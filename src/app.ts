@@ -7,6 +7,7 @@ import { requestId } from './middlewares/request-id.js';
 import { httpLogger } from './middlewares/http-logger.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { tenantRoutes } from './tenant/routes.js';
 import { adminRoutes } from './routes/admin.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { openapiSpec } from './docs/openapi.js';
@@ -42,6 +43,8 @@ export function createApp() {
   // API v1.
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/admin', adminRoutes);
+  // Backend-only, per-app identity endpoints; existing v1 flows unchanged.
+  app.use('/api/v2/tenant', tenantRoutes);
 
   // 404 for anything unmatched, then the centralized error handler last.
   app.use(notFoundHandler);

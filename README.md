@@ -4,15 +4,19 @@ A production-ready authentication and session-management service built with Expr
 
 Live demo: `https://login-service-8akx.onrender.com` (free tier — the first request after idle may take ~30-60s to cold-start).
 
-## Application isolation (Phase 1 foundation)
+## Application isolation (Phases 1–3 foundation)
 
-A separate PostgreSQL control-plane registry is now available behind optional `CONTROL_PLANE_DATABASE_URL`, with `npm run control:migrate` for its own versioned schema. It tracks application registrations, exact redirect URIs, provisioning status, audit events and database secret **references**, never app-user records. Current login flows remain on the original legacy database. Tenant DB provisioning, routing and the dashboard are **not yet implemented**. See [CONTROL_PLANE_ARCHITECTURE.md](./CONTROL_PLANE_ARCHITECTURE.md).
+A separate PostgreSQL control-plane registry is now available behind optional `CONTROL_PLANE_DATABASE_URL`, with `npm run control:migrate` for its own versioned schema. It tracks application registrations, exact redirect URIs, provisioning status, audit events and database secret **references**, never app-user records. Current login flows remain on the original legacy database. Internal Neon/PostgreSQL provisioning and a separate backend-only tenant routing API are now available. The dashboard and hosted OIDC flows are **not yet implemented**. See [CONTROL_PLANE_ARCHITECTURE.md](./CONTROL_PLANE_ARCHITECTURE.md).
+
+## Verified multi-application routing (Phase 3)
+
+The backend-only `/api/v2/tenant/register`, `/login` and `/me` routes verify a registered application **client ID plus its private server-side key**, select its own Auth database through bounded Prisma pooling, and issue short-lived application-audience-scoped JWTs. Legacy `/api/v1/auth/*` stays unchanged. **Never embed the app key in browser/mobile code.** See [PHASE_3_ROUTING.md](./PHASE_3_ROUTING.md). Tenant refresh sessions, hosted login, OIDC/PKCE and the Auth Dashboard are upcoming.
 
 ## Reuse across projects
 
 For a Next.js, Express or other backend, use **`POST /api/v1/auth/introspect`** with a backend-only `x-auth-service-key`. It checks the access token, token revocation and *current* user role without sharing the JWT signing secret. See [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md).
 
-**Scope:** This service has one global user store and global `USER`/`ADMIN` roles. It is not OAuth/OIDC or multi-tenant authorization. Every app must enforce its own workspace access. The refresh cookie remains same-site only (`SameSite=Strict`).
+**Scope:** The legacy `/api/v1/auth/*` API has one global user store and `USER`/`ADMIN` roles. New `/api/v2/tenant/*` uses isolated per-app user databases and a separate JWT signing key. It is not OAuth/OIDC or multi-tenant authorization. Every app must enforce its own workspace access. The refresh cookie remains same-site only (`SameSite=Strict`).
 
 ## Production reset email integration
 
