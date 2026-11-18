@@ -74,6 +74,47 @@ describe.skipIf(!process.env.RUN_CONTROL_TESTS || !ENV.DASHBOARD_OPERATOR_PASSWO
       const detail=await request(app).get('/dashboard/apps/'+createdId).set('Cookie',cookie);
       expect(detail.text).toContain('value="90"');
     });
+
+    it('shows only the active app database users and audits role changes', async()=>{
+      const { registerApplication }=await import('../../src/control-plane/registry.js');
+      const { saveTenantConnectionSecret }=await import('../../src/provisioning/secrets.js');
+      const { markApplicationDatabaseReady, activateApplication }=await import('../../src/control-plane/lifecycle.js');
+      const { tenantPool }=await import('../../src/tenant/database-pool.js');
+      const appRecord=await registerApplication({
+        name:'User Directory CI',slug:'directory-'+randomUUID().slice(0,8),
+        redirectUris:['https://directory.example.com/callback'],
+        provider:'POSTGRESQL',mode:'EXTERNAL',
+      });
+      const ref=await saveTenantConnectionSecret(appRecord.id,
+        'postgresql://postgres:postgres@127.0.0.1:5432/tenant_beta_ci?sslmode=disable');
+      await markApplicationDatabaseReady(appRecord.id,ref,
+        '20260911120000_hardening_token_lifecycle','system:test-provisioner');
+      expect(await activateApplication(appRecord.id,'system:test-provisioner')).toBe(true);
+      const identity=await tenantPool.withTenant({
+        id:appRecord.id,clientId:appRecord.clientId,status:'ACTIVE',
+        secretRef:ref,schemaVersion:'20260911120000_hardening_token_lifecycle',
+      },db=>db.user.create({data:{
+        email:'dashboard-'+randomUUID().slice(0,8)+'@example.com',
+        password:'test-non-real-hash',
+      }}));
+      const page=await request(app).get('/dashboard/apps/'+appRecord.id+'/users')
+        .set('Cookie',cookie);
+      expect(page.status).toBe(200);
+      expect(page.text).toContain(identity.email);
+      expect(page.text).not.toContain('test-non-real-hash');
+      const forbidden=await request(app).post('/dashboard/apps/'+appRecord.id+'/users/'+identity.id+'/role')
+        .set('Cookie',cookie).type('form').send({_csrf:'invalid',role:'ADMIN'});
+      expect(forbidden.status).toBe(400);
+      const changed=await request(app).post('/dashboard/apps/'+appRecord.id+'/users/'+identity.id+'/role')
+        .set('Cookie',cookie).type('form').send({_csrf:csrf,role:'ADMIN'});
+      expect(changed.status).toBe(303);
+      const user=await tenantPool.withTenant({
+        id:appRecord.id,clientId:appRecord.clientId,status:'ACTIVE',
+        secretRef:ref,schemaVersion:'20260911120000_hardening_token_lifecycle',
+      },db=>db.user.findUnique({where:{id:identity.id}}));
+      expect(user?.role).toBe('ADMIN');
+    },30000);
+
     it('logs out and revokes the operator session',async()=>{
       const logout=await request(app).post('/dashboard/logout').set('Cookie',cookie)
         .type('form').send({_csrf:csrf});
