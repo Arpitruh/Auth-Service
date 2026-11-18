@@ -6,6 +6,7 @@ import { tenantPool } from './database-pool.js';
 import { issueTenantAccessToken, verifyTenantAccessToken } from './access-token.js';
 import { ENV } from '../config/env.js';
 import { kv } from '../lib/store.js';
+import { getApplicationSettings } from '../dashboard/repository.js';
 import { validate } from '../middlewares/validate.js';
 import { registerSchema, loginSchema } from '../schemas/auth.schema.js';
 import type { VerifiedTenant } from './client-credentials.js';
@@ -32,6 +33,9 @@ async function rateLimitTenantRequest(appId: string, action: string, ip: string)
 tenantRoutes.post('/register', validate(registerSchema), async (req, res) => {
   const tenant = res.locals.tenant as VerifiedTenant;
   try {
+    if (!(await getApplicationSettings(tenant.id)).allowRegistration) {
+      res.status(403).json({ error:'Registration disabled for this application' }); return;
+    }
     if (!await rateLimitTenantRequest(tenant.id, 'register', req.ip ?? 'unknown')) {
       res.status(429).json({ error: 'Too many registration attempts' }); return;
     }
@@ -54,6 +58,9 @@ tenantRoutes.post('/login', validate(loginSchema), async (req, res) => {
   const tenant = res.locals.tenant as VerifiedTenant;
   const { email, password } = identity(req);
   try {
+    if (!(await getApplicationSettings(tenant.id)).allowPasswordLogin) {
+      res.status(403).json({ error:'Password login disabled for this application' }); return;
+    }
     if (!await rateLimitTenantRequest(tenant.id, 'login', req.ip ?? 'unknown')) {
       res.status(429).json({ error: 'Too many login attempts' }); return;
     }

@@ -41,6 +41,12 @@ const envSchema = z.object({
   TENANT_POOL_CONNECTIONS_PER_APP: numeric(2).pipe(z.number().min(1).max(10)),
   TENANT_TOKEN_ISSUER: z.string().url().default('https://auth.example.com/tenant'),
   TENANT_JWT_SECRET: z.string().min(32).optional(),
+  // OIDC is opt-in and requires RSA signing + shared Redis in production.
+  OIDC_ISSUER: z.string().url().optional(),
+  OIDC_PRIVATE_KEY_B64: z.string().optional(),
+  OIDC_KEY_ID: z.string().optional(),
+  DASHBOARD_OPERATOR_USERNAME: z.string().min(3).optional(),
+  DASHBOARD_OPERATOR_PASSWORD_HASH: z.string().startsWith('$argon2id$').optional(),
 
   // JWT secrets (current) + optional previous secrets for rotation grace.
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),
