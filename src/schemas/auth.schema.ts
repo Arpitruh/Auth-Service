@@ -41,6 +41,8 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
+export const introspectionSchema = z.object({ token: z.string().min(1).max(8192) });
+
 export const forgotPasswordSchema = z.object({
   email,
 });

@@ -43,6 +43,8 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL: z.string().default('7d'),
 
   CLIENT_ORIGIN: z.string().default('http://localhost:3000'),
+  CLIENT_ORIGINS: z.string().optional(), // Comma-separated browser origins.
+  INTROSPECTION_API_KEYS: z.string().optional(), // Server-only keys, comma-separated for rotation.
   REFRESH_COOKIE_NAME: z.string().default('refreshToken'),
 
   // Optional Redis. When absent, the in-memory KV fallback is used.

@@ -4,6 +4,12 @@ A production-ready authentication and session-management service built with Expr
 
 Live demo: `https://login-service-8akx.onrender.com` (free tier — the first request after idle may take ~30-60s to cold-start).
 
+## Reuse across projects
+
+For a Next.js, Express or other backend, use **`POST /api/v1/auth/introspect`** with a backend-only `x-auth-service-key`. It checks the access token, token revocation and *current* user role without sharing the JWT signing secret. See [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md).
+
+**Scope:** This service has one global user store and global `USER`/`ADMIN` roles. It is not OAuth/OIDC or multi-tenant authorization. Every app must enforce its own workspace access. The refresh cookie remains same-site only (`SameSite=Strict`).
+
 ## Features
 
 - **Email + password auth** with Argon2 password hashing.

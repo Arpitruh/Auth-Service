@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { adminRoutes } from './routes/admin.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { openapiSpec } from './docs/openapi.js';
+import { parseAllowedOrigins } from './lib/origins.js';
 
 /**
  * Builds the Express application without binding a port, so it can be reused by
@@ -27,7 +28,10 @@ export function createApp() {
 
   app.use(express.json());
   app.use(cookieParser());
-  app.use(cors({ origin: ENV.CLIENT_ORIGIN, credentials: true }));
+  const allowedOrigins = parseAllowedOrigins(ENV.CLIENT_ORIGINS || ENV.CLIENT_ORIGIN);
+  app.use(cors({ origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin));
+  }, credentials: true }));
 
   // Health/readiness (no version prefix, for load balancers).
   app.use(healthRoutes);
