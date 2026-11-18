@@ -21,7 +21,7 @@ export function issueTenantAccessToken(
   return jwt.sign({ sub: user.id, email: user.email, role: user.role, appId, jti: randomUUID() },
     ENV.TENANT_JWT_SECRET,
     { algorithm: 'HS256', issuer: ENV.TENANT_TOKEN_ISSUER,
-      audience: clientId, expiresIn: '15m', header: { typ: 'tenant+jwt' } });
+      audience: clientId, expiresIn: '15m', header: { alg: 'HS256', typ: 'tenant+jwt' } });
 }
 /** Checks signature, required tenant claim, issuer, audience and user identity.
  * This is server-to-server BFF token validation, NOT full OIDC.
