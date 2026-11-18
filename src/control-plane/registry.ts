@@ -8,7 +8,7 @@ export function distinctDatabaseTargets(controlUrl: string, legacyUrl: string): 
   const target = (value: string) => {
     const u = new URL(value);
     if (!['postgresql:','postgres:'].includes(u.protocol)) throw new Error('PostgreSQL URL required');
-    return [u.hostname.toLowerCase(), u.port || '5432', decodeURIComponent(u.username), decodeURIComponent(u.pathname)].join('|');
+    return [u.hostname.toLowerCase().replace(/-pooler(?=\.)/,'') , u.port || '5432', decodeURIComponent(u.pathname)].join('|');
   };
   return target(controlUrl) !== target(legacyUrl);
 }
