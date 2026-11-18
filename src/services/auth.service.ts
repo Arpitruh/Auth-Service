@@ -2,7 +2,7 @@ import argon2 from 'argon2';
 import type { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma.js';
-import { ENV, REFRESH_TOKEN_TTL_DAYS } from '../config/env.js';
+import { ENV, REFRESH_TOKEN_TTL_MS } from '../config/env.js';
 import {
   ErrorCode,
   conflict,
@@ -45,7 +45,7 @@ function toPublicUser(user: {
 }
 
 function refreshExpiryDate(): Date {
-  return new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+  return new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 }
 
 /**

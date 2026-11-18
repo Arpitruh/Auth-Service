@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { refreshTokenTtlMs } from '../../src/config/env.js';
 import {
   signAccessToken,
   signRefreshToken,
@@ -57,5 +58,17 @@ describe('remainingTtlSeconds', () => {
   it('returns a positive value for a future expiry', () => {
     const future = Math.floor(Date.now() / 1000) + 100;
     expect(remainingTtlSeconds({ exp: future })).toBeGreaterThan(0);
+  });
+});
+
+describe('refresh TTL consistency', () => {
+  it('supports seconds, minutes, hours and days', () => {
+    expect(refreshTokenTtlMs('7d')).toBe(7 * 24 * 60 * 60 * 1000);
+    expect(refreshTokenTtlMs('2h')).toBe(2 * 60 * 60 * 1000);
+    expect(refreshTokenTtlMs('15m')).toBe(15 * 60 * 1000);
+  });
+  it('rejects invalid durations', () => {
+    expect(() => refreshTokenTtlMs('forever')).toThrow();
+    expect(() => refreshTokenTtlMs('0d')).toThrow();
   });
 });

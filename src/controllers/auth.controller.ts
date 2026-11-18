@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { CookieOptions } from 'express';
 import { authService, type IssueContext } from '../services/auth.service.js';
-import { ENV, REFRESH_TOKEN_TTL_DAYS } from '../config/env.js';
+import { ENV, REFRESH_TOKEN_TTL_MS } from '../config/env.js';
 
 /**
  * CSRF / cookie policy decision (Phase 2, spec section 6):
@@ -27,7 +27,7 @@ function refreshCookieOptions(): CookieOptions {
     secure: ENV.IS_PRODUCTION,
     sameSite: 'strict',
     path: '/api/v1/auth',
-    maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+    maxAge: REFRESH_TOKEN_TTL_MS,
   };
 }
 
