@@ -18,7 +18,8 @@ describe('per-application DB security', () => {
     expect(() => validateTenantPostgresUrl(process.env.CONTROL_PLANE_DATABASE_URL!)).toThrow();
   });
   it('requires TLS, real database names and a valid hostname', () => {
-    expect(validateTenantPostgresUrl('postgresql://user:pass@db.example.com/appdb?sslmode=require').hostname).toBe('db.example.com');
+    expect(validateTenantPostgresUrl('postgresql://user:pass@db-tenant.us-east-1.aws.neon.tech/appdb?sslmode=require').hostname).toBe('db-tenant.us-east-1.aws.neon.tech');
+    expect(() => validateTenantPostgresUrl('postgresql://user:pass@db.example.com/appdb?sslmode=require')).toThrow();
     for (const url of [
       'postgresql://user:pass@localhost/appdb?sslmode=require',
       'postgresql://user:pass@127.0.0.1/appdb?sslmode=require',
