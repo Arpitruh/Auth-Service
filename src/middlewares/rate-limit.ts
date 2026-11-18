@@ -14,6 +14,7 @@ class KvRateLimitStore implements Store {
     const totalHits = await kv.incr('rate:' + this.namespace + ':' + key, Math.ceil(this.windowMs / 1000));
     return { totalHits, resetTime: new Date(Date.now() + this.windowMs) };
   }
+  async decrement(key: string): Promise<void> { await kv.decr('rate:' + this.namespace + ':' + key); }
   async resetKey(key: string): Promise<void> { await kv.del('rate:' + this.namespace + ':' + key); }
 }
 function byIp(req: Request): string { return ipKeyGenerator(req.ip ?? '127.0.0.1'); }
