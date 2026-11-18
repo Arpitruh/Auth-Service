@@ -30,6 +30,20 @@ describe.skipIf(!process.env.RUN_CONTROL_TESTS)('isolated control-plane registry
     expect(second.redirectUris).toEqual(['https://jobs.example.com/auth/callback']);
     expect(JSON.stringify(first)).not.toContain('secretRef');
     expect(await registry.getDatabaseBindingForAppId(first.id)).toBeNull();
+    const lifecycle = await import('../../src/control-plane/lifecycle.js');
+    // Neither app can activate while its own isolated database is uninitialized.
+    expect(await lifecycle.activateApplication(first.id, 'system:test-provisioner')).toBe(false);
+    await lifecycle.markApplicationDatabaseReady(
+      first.id, 'secret://apps/crm-credentials', '20261118_init', 'system:test-provisioner',
+    );
+    expect(await lifecycle.activateApplication(first.id, 'system:test-provisioner')).toBe(true);
+    const ready = await registry.getDatabaseBindingForAppId(first.id);
+    expect(ready?.secretRef).toBe('secret://apps/crm-credentials');
+    expect(await registry.getDatabaseBindingForAppId(second.id)).toBeNull();
+    // Public application configuration cannot disclose credential references.
+    expect(JSON.stringify(await registry.getApplicationByClientId(first.clientId))).not.toContain('secret://');
+    await lifecycle.suspendApplication(first.id, 'system:test-provisioner');
+    expect(await registry.getDatabaseBindingForAppId(first.id)).toBeNull();
     expect(await registry.getApplicationByClientId('authapp_invalid')).toBeNull();
 
     const control = new Pool({ connectionString: process.env.CONTROL_PLANE_DATABASE_URL });
@@ -59,5 +73,7 @@ afterAll(async () => {
   if (process.env.RUN_CONTROL_TESTS) {
     const registry = await import('../../src/control-plane/registry.js');
     await registry.closeControlPlane();
+    const lifecycle = await import('../../src/control-plane/lifecycle.js');
+    await lifecycle.closeApplicationLifecycle();
   }
 });
