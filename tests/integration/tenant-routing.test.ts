@@ -66,6 +66,10 @@ describe.skipIf(process.env.RUN_TENANT_TESTS !== '1')('verified tenant database 
     // Other app continues to operate.
     expect((await request(server).post('/api/v2/tenant/login').set(headers(second))
       .send({ email: second.email, password })).status).toBe(200);
+    const { revokeApplicationKey, digestClientKey } = await import('../../src/tenant/client-credentials.js');
+    await revokeApplicationKey(second.appId, digestClientKey(second.key));
+    expect((await request(server).post('/api/v2/tenant/login').set(headers(second))
+      .send({ email: second.email, password })).status).toBe(401);
   }, 30000);
   afterAll(async () => {
     if (process.env.RUN_TENANT_TESTS !== '1') return;
