@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 /**
  * Shared key-value store abstraction for cross-instance state:
  *   - access-token denylist   (denylist:<jti>)
@@ -28,6 +28,8 @@ export interface KvStore {
    * count.
    */
   incr(key: string, ttlSeconds: number): Promise<number>;
+  /** Decrement a counter without extending its expiry. */
+  decr(key: string): Promise<void>;
   /** Whether a key currently exists (and is not expired). */
   has(key: string): Promise<boolean>;
   /** Release any resources (connections, timers). */
@@ -96,6 +98,11 @@ export class InMemoryKvStore implements KvStore {
     return 1;
   }
 
+  async decr(key: string): Promise<void> {
+    const entry = this.map.get(key);
+    if (entry && !this.isExpired(entry)) entry.value = String(Math.max(0, Number(entry.value) - 1));
+  }
+
   async has(key: string): Promise<boolean> {
     return (await this.get(key)) !== null;
   }
@@ -145,6 +152,11 @@ export class RedisKvStore implements KvStore {
     const client = await this.ready();
     const script = "local n=redis.call('INCR', KEYS[1]); if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; return n";
     return Number(await client.eval(script, 1, this.key(key), Math.max(1, Math.ceil(ttlSeconds)).toString()));
+  }
+  async decr(key: string): Promise<void> {
+    const client = await this.ready();
+    const script = "if redis.call('EXISTS',KEYS[1])==1 then local n=redis.call('DECR',KEYS[1]); if n<0 then redis.call('SET',KEYS[1],'0','KEEPTTL') end end; return 1";
+    await client.eval(script, 1, this.key(key));
   }
   async has(key: string): Promise<boolean> { return (await this.get(key)) !== null; }
   async close(): Promise<void> { this.redis.disconnect(); }
