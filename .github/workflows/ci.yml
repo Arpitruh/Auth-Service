@@ -73,3 +73,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Build staging Docker image with control-plane migrations
+        run: docker build --pull --tag auth-garden-staging:ci .
