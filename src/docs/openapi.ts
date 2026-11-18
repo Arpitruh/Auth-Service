@@ -16,6 +16,7 @@ export const openapiSpec = {
   components: {
     securitySchemes: {
       bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      serviceKey: { type: 'apiKey', in: 'header', name: 'x-auth-service-key' },
     },
     schemas: {
       Error: {
@@ -79,6 +80,19 @@ export const openapiSpec = {
       post: {
         summary: 'Rotate tokens using the refresh cookie',
         responses: { '200': json('AuthResponse'), '401': json('Error') },
+      },
+    },
+    '/auth/introspect': {
+      post: {
+        summary: 'Backend-only access token introspection (RFC 7662-inspired)',
+        security: [{ serviceKey: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: {
+          type: 'object', required: ['token'], properties: { token: { type: 'string' } },
+        } } } },
+        responses: {
+          '200': { description: 'Active token metadata or { active: false }' },
+          '401': json('Error'), '503': json('Error'),
+        },
       },
     },
     '/auth/logout': {
