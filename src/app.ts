@@ -8,6 +8,7 @@ import { httpLogger } from './middlewares/http-logger.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { tenantRoutes } from './tenant/routes.js';
+import { oidcRoutes } from './oidc/routes.js';
 import { adminRoutes } from './routes/admin.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { openapiSpec } from './docs/openapi.js';
@@ -45,6 +46,8 @@ export function createApp() {
   app.use('/api/v1/admin', adminRoutes);
   // Backend-only, per-app identity endpoints; existing v1 flows unchanged.
   app.use('/api/v2/tenant', tenantRoutes);
+  // Opt-in hosted OpenID Connect endpoints; no legacy auth behavior change.
+  app.use(oidcRoutes);
 
   // 404 for anything unmatched, then the centralized error handler last.
   app.use(notFoundHandler);

@@ -34,6 +34,8 @@ jobs:
       RUN_CONTROL_TESTS: '1'
       RUN_TENANT_TESTS: '1'
       TENANT_JWT_SECRET: ci-only-tenant-secret-with-strong-test-length-12345
+      OIDC_ISSUER: http://localhost:5000
+      OIDC_KEY_ID: ci-testing-rsa-key
       CONTROL_PLANE_ENCRYPTION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
       JWT_ACCESS_SECRET: ci-only-not-a-production-access-secret-string
       JWT_REFRESH_SECRET: ci-only-not-a-production-refresh-secret-string
@@ -62,6 +64,9 @@ jobs:
           DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/tenant_beta_ci?sslmode=disable' npx prisma migrate deploy
       - name: Verify repeat control migration is idempotent
         run: npm run control:migrate
+      - name: Generate disposable RSA key for OIDC tests
+        run: |
+          node --input-type=module -e "import {generateKeyPairSync} from 'node:crypto'; import {appendFileSync} from 'node:fs'; const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048}); const pem=privateKey.export({type:'pkcs8',format:'pem'}); appendFileSync(process.env.GITHUB_ENV,'OIDC_PRIVATE_KEY_B64='+Buffer.from(pem).toString('base64')+'\\n');"
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
