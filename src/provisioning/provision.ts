@@ -44,13 +44,13 @@ export async function provisionTenant(request: ProvisionRequest): Promise<{ appl
   try {
     let connectionString: string;
     if (request.mode === 'MANAGED') {
-      const created = await createNeonTenantProject('auth-' + slug);
-      projectId = created.projectId;
-      // Persist the provider resource ID before any subsequent steps can fail.
-      await control().query(
-        'UPDATE "ControlProvisioningAttempt" SET "providerResourceId"=$2 WHERE "applicationId"=$1',
-        [request.applicationId, projectId],
-      );
+      const created = await createNeonTenantProject('auth-' + slug, async id => {
+        projectId = id;
+        await control().query(
+          'UPDATE "ControlProvisioningAttempt" SET "providerResourceId"=$2 WHERE "applicationId"=$1',
+          [request.applicationId, id],
+        );
+      });
       connectionString = created.connectionUrl;
     } else {
       connectionString = request.connectionUrl;
