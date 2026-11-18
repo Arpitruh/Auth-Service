@@ -35,9 +35,10 @@ describe.skipIf(process.env.RUN_TENANT_TESTS !== '1' || !process.env.OIDC_PRIVAT
       await markApplicationDatabaseReady(appId, ref, '20260911120000_hardening_token_lifecycle', 'system:test-provisioner');
       expect(await activateApplication(appId, 'system:test-provisioner')).toBe(true);
       email = 'oidc-' + randomUUID().slice(0,8) + '@example.com';
+      const passwordHash = await argon2.hash(password);
       await tenantPool.withTenant({ id: appId, clientId, status: 'ACTIVE',
         secretRef: ref, schemaVersion: '20260911120000_hardening_token_lifecycle' },
-      db => db.user.create({ data: { email, password: await argon2.hash(password) } }));
+      db => db.user.create({ data: { email, password: passwordHash } }));
       const invalid = await request(app).get('/oauth/authorize').query({
         client_id: clientId, redirect_uri: 'https://attacker.example.com/callback',
         response_type:'code', scope:'openid', state:'s'.repeat(24), nonce:'n'.repeat(24),
