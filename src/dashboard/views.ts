@@ -12,7 +12,7 @@ export const palette = {
 const css = String.raw`
 :root{--cream:#EBEBD8;--olive:#637545;--forest:#455230;--sage:#9BA685;--white:#fbfcf5;--ink:#28311f}
 *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
-a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.65;cursor:wait}.nav-logout{margin-top:auto}.nav-logout button{width:100%;border:1px solid #9BA685;background:transparent;color:#fff;text-align:left;padding:12px 15px;border-radius:10px}.nav-logout button:hover{background:rgba(255,255,255,.12)}.busy-note{display:none;margin-left:8px}.is-submitting .busy-note{display:inline}.auth-recovery{display:block;text-align:center;margin-top:15px;font-size:13px;text-decoration:underline;color:var(--forest)}
 .shell{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:100vh}.aside{background:var(--forest);color:#f9f9ec;padding:30px 23px;display:flex;flex-direction:column;gap:42px}
 .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.4px;font-size:21px}.mark{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--sage);color:var(--forest);font-size:24px}
 .nav{display:grid;gap:7px}.nav a{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:11px;color:#e3e9d9}
@@ -42,9 +42,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--olive);box-shadow:0 0
 @media(max-width:600px){.top,.panelhead{flex-direction:column;align-items:flex-start}table{font-size:12px}td,th{padding:10px 4px}}
 `;
 function document(title: string, body: string): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="same-origin"><title>${esc(title)} · Auth Garden</title><style>${css}</style></head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="same-origin"><title>${esc(title)} · Auth Garden</title><style>${css}</style><script src="/dashboard/ui.js" defer></script></head><body>${body}</body></html>`;
 }
-export function layout(title: string, body: string, active = "applications"): string {
+export function layout(title: string, body: string, active = "applications", csrf = ""): string {
   const nav = [
     ["applications", "/dashboard", "▦", "Applications"],
     ["new", "/dashboard/new", "＋", "Create app"],
@@ -55,9 +55,10 @@ export function layout(title: string, body: string, active = "applications"): st
         `<a class="${active === key ? "active" : ""}" href="${href}"><span>${icon}</span>${label}</a>`,
     )
     .join("");
+  const account = csrf ? `<form class="nav-logout" method="post" action="/dashboard/logout"><input type="hidden" name="_csrf" value="${esc(csrf)}"><button type="submit">Sign out securely →<span class="busy-note">Signing out…</span></button></form>` : "";
   return document(
     title,
-    `<div class="shell"><aside class="aside"><div class="brand"><div class="mark">✳</div> Auth Garden</div><nav class="nav">${links}</nav><div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><main class="main">${body}</main></div>`,
+    `<div class="shell"><aside class="aside"><div class="brand"><div class="mark">✳</div> Auth Garden</div><nav class="nav">${links}</nav>${account}<div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><main class="main">${body}</main></div>`,
   );
 }
 export function status(value: string): string {
@@ -71,24 +72,24 @@ export function flash(message: string, kind: "success" | "warn" | "error" = "suc
 export function loginPage(message?: string): string {
   return document(
     "Operator sign in",
-    `<div class="login-wrap"><div class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><p class="eyebrow" style="margin-top:36px">Secure operator access</p><h1>Welcome back.</h1><p class="sub">Sign in to manage your isolated application identities.</p>${message ? flash(message, "error") : ""}<form method="post" action="/dashboard/login"><div class="formrow"><label>Operator username</label><input name="username" autocomplete="username" required maxlength="120"></div><div class="formrow"><label>Password</label><input name="password" type="password" autocomplete="current-password" required maxlength="1024"></div><button class="btn" style="width:100%">Sign in securely →</button></form><p class="tiny" style="margin-top:25px">Operator sessions are private, expiring and server-side.</p></div></div>`,
+    `<div class="login-wrap"><div class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><p class="eyebrow" style="margin-top:36px">Secure operator access</p><h1>Welcome back.</h1><p class="sub">Sign in to manage your isolated application identities.</p>${message ? flash(message, "error") : ""}<form method="post" action="/dashboard/login"><div class="formrow"><label>Operator username</label><input name="username" autocomplete="username" required maxlength="120"></div><div class="formrow"><label>Password</label><input name="password" type="password" autocomplete="current-password" required maxlength="1024"></div><button class="btn" style="width:100%">Sign in securely →<span class="busy-note"> Signing in…</span></button></form><a class="auth-recovery" href="/dashboard/recover">Need to reset your operator password?</a><p class="tiny" style="margin-top:25px">Operator sessions are private, expiring and server-side.</p></div></div>`,
   );
 }
-export function appListPage(apps: DashboardApplication[], notice = ""): string {
+export function appListPage(apps: DashboardApplication[], notice = "", csrf = ""): string {
   const active = apps.filter((a) => a.status === "ACTIVE").length;
   const ready = apps.filter((a) => a.provisionState === "READY").length;
   const rows = apps
     .map(
       (app) =>
-        `<tr><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">${esc(app.name)}</a><div class="tiny">${esc(app.slug)}</div></td><td>${esc(app.provider)}<div class="tiny">${esc(app.mode)}</div></td><td>${status(app.status)}</td><td>${status(app.provisionState)}</td><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">Manage ↗</a></td></tr>`,
+        `<tr data-application-row data-status="${esc(app.status)}" data-search="${esc((app.name + " " + app.slug + " " + app.provider).toLowerCase())}"><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">${esc(app.name)}</a><div class="tiny">${esc(app.slug)}</div></td><td>${esc(app.provider)}<div class="tiny">${esc(app.mode)}</div></td><td>${status(app.status)}</td><td>${status(app.provisionState)}</td><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">Manage ↗</a></td></tr>`,
     )
     .join("");
-  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="sub">No projects yet. Create your first app.</td></tr>'}</tbody></table></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
-  return layout("Applications", body);
+  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><div class="grid2" style="margin-bottom:16px"><div><label for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search by app name, slug or provider"></div><div><label for="app-status">Filter by status</label><select id="app-status"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option></select></div></div><p class="tiny" id="filter-count" role="status" aria-live="polite"></p><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="sub">No projects yet. Create your first app.</td></tr>'}</tbody></table></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
+  return layout("Applications", body, "applications", csrf);
 }
 export function createAppPage(csrf: string, message = ""): string {
   const body = `<div class="breadcrumbs"><a href="/dashboard">Applications</a> / Create</div><div class="eyebrow">Application setup</div><h1>Create a new app</h1><p class="sub">Register a client and choose how its isolated Auth database will be created.</p>${message ? flash(message, "error") : ""}<section class="panel" style="max-width:760px"><form method="post" action="/dashboard/apps"><input type="hidden" name="_csrf" value="${esc(csrf)}"><div class="grid2"><div class="formrow"><label>Application name</label><input name="name" placeholder="LeadLoop CRM" required maxlength="120"></div><div class="formrow"><label>Unique slug</label><input name="slug" placeholder="leadloop-crm" required pattern="[a-z0-9-]+"></div></div><div class="formrow"><label>Allowed callback URL</label><input name="redirectUri" type="url" placeholder="https://app.example.com/auth/callback" required><div class="tiny">Must be an exact HTTPS URL. Localhost HTTP is allowed for development.</div></div><div class="grid2"><div class="formrow"><label>Database provider</label><select name="provider"><option value="NEON">Neon PostgreSQL</option><option value="POSTGRESQL">Existing PostgreSQL</option></select></div><div class="formrow"><label>Database setup</label><select name="mode"><option value="MANAGED">Provision separate Neon project</option><option value="EXTERNAL">Connect existing empty database</option></select></div></div><div class="notice warn">Creating the application saves a DRAFT only. Neon resources are not created until you explicitly approve provisioning on the next screen.</div><button class="btn" type="submit">Create draft application →</button></form></section>`;
-  return layout("Create application", body, "new");
+  return layout("Create application", body, "new", csrf);
 }
 export function detailPage(
   app: DashboardApplication,
@@ -122,7 +123,7 @@ export function detailPage(
       ? `<form method="post" action="/dashboard/apps/${app.id}/keys">${csrfInput}<div class="formrow"><label>Credential label</label><input name="label" placeholder="Production BFF" required maxlength="100"></div><button class="btn light">Generate backend key</button></form>`
       : '<p class="tiny">Activate the app to issue credentials.</p>';
   const body = `<div class="breadcrumbs"><a href="/dashboard">Applications</a> / ${esc(app.name)}</div><div class="top"><div><div class="eyebrow">Application workspace</div><h1>${esc(app.name)}</h1><p class="sub">Manage client details, isolated database and security.</p></div>${status(app.status)}</div>${options.notice ? flash(options.notice) : ""}${options.oneTimeKey ? `<div class="notice warn"><strong>Copy this backend secret now — it will not be displayed again.</strong><p class="code">${esc(options.oneTimeKey)}</p>Only store it in a backend environment variable. Never put this key in a browser.</div>` : ""}<div class="grid2"><section class="panel"><h2>Application details</h2>${row("Client ID", `<span class="code">${esc(app.clientId)}</span>`)}${row("Database provider", esc(app.provider))}${row("Provision mode", esc(app.mode))}${row("Database status", status(app.provisionState))}${row("Schema version", esc(app.schemaVersion || "Not initialized"))}${row("SSO", app.ssoEnabled ? "On" : "Off (isolated)")}${row("Users", options.count == null ? "—" : String(options.count))}<p><a class="btn light" href="/dashboard/apps/${app.id}/users">Manage users →</a></p><div class="formrow" style="margin-top:20px"><label>Registered callbacks</label>${app.redirectUris.map((u) => `<div class="code">${esc(u)}</div>`).join("")}</div></section><section class="panel"><h2>Database provisioning</h2>${provision}${activation}<div style="margin-top:15px">${suspension}</div></section></div><div class="grid2"><section class="panel"><h2>Authentication policy</h2><form method="post" action="/dashboard/apps/${app.id}/settings">${csrfInput}<div class="formrow"><label class="inline"><input type="checkbox" name="allowPasswordLogin" value="true" ${settings.allowPasswordLogin ? "checked" : ""}> Password login enabled</label></div><div class="formrow"><label class="inline"><input type="checkbox" name="allowRegistration" value="true" ${settings.allowRegistration ? "checked" : ""}> Registration enabled</label></div><div class="formrow"><label>Session policy (minutes)</label><input name="sessionMinutes" type="number" min="5" max="10080" value="${settings.sessionMinutes}"></div><button class="btn">Save policy</button></form><p class="tiny" style="margin-top:14px">Session duration is saved as configuration; custom token lifetime enforcement is not yet supported.</p></section><section class="panel"><h2>Backend credentials</h2><p class="sub">Generate an application-specific key for your server, never the frontend.</p>${key}</section></div>`;
-  return layout(app.name, body);
+  return layout(app.name, body, "applications", csrf);
 }
 
 export function appUsersPage(
@@ -155,5 +156,46 @@ export function appUsersPage(
     <p class="sub">Showing up to 100 latest users from this application's own Auth database.</p>
     <section class="panel"><table><thead><tr><th>Identity</th><th>Role</th><th>Created</th><th>Manage</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4">No users found</td></tr>'}</tbody></table></section>`,
+    "applications", csrf,
   );
+}
+
+/** External JS is permitted by our strict CSP; no inline scripts or unsafe-inline. */
+export const dashboardUiScript = `document.addEventListener("submit", function(event) {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || form.dataset.submitting === "1") return;
+  if (!form.checkValidity()) return;
+  form.dataset.submitting = "1";
+  form.classList.add("is-submitting");
+  const submitter = event.submitter;
+  if (submitter instanceof HTMLButtonElement) {
+    // Disable after the submit event so the browser includes its form values.
+    setTimeout(function() { submitter.disabled = true; }, 0);
+  }
+});
+(function() {
+  const search = document.getElementById("app-search");
+  const status = document.getElementById("app-status");
+  const counter = document.getElementById("filter-count");
+  if (!(search instanceof HTMLInputElement) || !(status instanceof HTMLSelectElement)) return;
+  const rows = Array.from(document.querySelectorAll("[data-application-row]"));
+  const filter = function() {
+    const query = search.value.trim().toLowerCase();
+    let visible = 0;
+    rows.forEach(function(row) {
+      const matches = (row.getAttribute("data-search") || "").includes(query) &&
+        (!status.value || row.getAttribute("data-status") === status.value);
+      row.hidden = !matches;
+      if (matches) visible++;
+    });
+    if (counter) counter.textContent = visible + " of " + rows.length + " applications shown";
+  };
+  search.addEventListener("input", filter);
+  status.addEventListener("change", filter);
+  filter();
+})();`;
+
+/** Recovery is intentionally operator-assisted: no unauthenticated reset links. */
+export function recoveryPage(): string {
+  return document("Operator password recovery", `<div class="login-wrap"><section class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><h1 style="margin-top:28px">Reset operator access</h1><p class="sub">For security, this deployment does not offer email-based admin recovery. The service administrator must rotate the password hash through Render.</p><ol><li>Generate a new Argon2id hash in your trusted Auth Service terminal.</li><li>Update <code>DASHBOARD_OPERATOR_PASSWORD_HASH</code> in Render's Environment settings.</li><li>Redeploy the service, then sign in with the newly chosen password.</li></ol><div class="notice warn">Use a unique strong password. Do not enter your password into third-party hash generators.</div><a class="btn light" href="/dashboard/login">← Back to sign in</a></section></div>`);
 }

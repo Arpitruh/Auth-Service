@@ -8,6 +8,11 @@ describe('InMemoryKvStore', () => {
     await store?.close();
   });
 
+  it('answers the readiness connectivity probe without network access', async () => {
+    store = new InMemoryKvStore();
+    expect(await store.ping()).toBe(true);
+  });
+
   it('stores and retrieves a value', async () => {
     store = new InMemoryKvStore();
     await store.set('k', 'v', 60);

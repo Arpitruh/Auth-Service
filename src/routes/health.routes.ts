@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { kv } from '../lib/store.js';
+import { ENV } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 
 const router = Router();
@@ -20,21 +21,23 @@ router.get('/health', (_req: Request, res: Response) => {
  * traffic until the instance is truly ready (Requirement 8.8).
  */
 router.get('/ready', async (_req: Request, res: Response) => {
-  const checks: Record<string, 'ok' | 'error'> = { db: 'ok', kv: 'ok' };
+  const checks: Record<string, 'ok' | 'error'> = { db: 'ok', redis: 'ok' };
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-  } catch (err) {
+  } catch {
     checks.db = 'error';
-    logger.error({ err, event: 'readiness_db_fail' }, 'DB readiness check failed');
+    logger.warn({ event: 'readiness_db_fail' }, 'DB readiness check failed');
   }
 
   try {
-    await kv.set('readiness:probe', '1', 5);
-    await kv.get('readiness:probe');
+    // Redis PING confirms a real TCP/TLS round-trip, not merely a constructed client.
+    // Local development uses an in-memory KV implementation.
+    if (!(await kv.ping())) throw new Error('Redis PING did not return PONG');
   } catch (err) {
-    checks.kv = 'error';
-    logger.error({ err, event: 'readiness_kv_fail' }, 'KV readiness check failed');
+    checks.redis = 'error';
+    // Do not log raw dependency errors: some libraries embed credential-bearing URLs.
+    logger.warn({ event: 'readiness_redis_fail', configured: Boolean(ENV.REDIS_URL) }, 'Redis readiness check failed');
   }
 
   const healthy = Object.values(checks).every((v) => v === 'ok');
