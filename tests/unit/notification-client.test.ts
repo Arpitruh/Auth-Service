@@ -18,7 +18,7 @@ describe('notification reset link integration', () => {
     await sendPasswordResetEmail('u@example.com', 'test-raw-token');
     const [url, options] = request.mock.calls[0];
     expect(String(url)).toContain('/api/v1/notifications/send');
-    expect(options.headers['x-notification-api-key']).toBeTruthy();
+    expect(options.headers['x-api-key']).toBeTruthy();
     const body = JSON.parse(options.body);
     expect(body.templateId).toBe('forgot-password');
     expect(body.payloadData.resetUrl).toContain('test-raw-token');
