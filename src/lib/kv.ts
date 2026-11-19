@@ -130,21 +130,79 @@ export class InMemoryKvStore implements KvStore {
 export class RedisKvStore implements KvStore {
   private readonly redis: Redis;
   private connecting: Promise<void> | undefined;
+  private lastConnectionIssue = 'NONE';
   constructor(url: string) {
     this.redis = new Redis(url, {
-      lazyConnect: true, maxRetriesPerRequest: 1, enableOfflineQueue: false,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      connectTimeout: 10000,
       retryStrategy: (times) => Math.min(times * 250, 1500),
     });
-    this.redis.on('error', () => { /* surfaced by awaited commands */ });
+    // Don't print raw Redis errors: upstream messages can include sensitive connection details.
+    this.redis.on('error', (error: Error & { code?: string }) => {
+      const code = typeof error.code === 'string' ? error.code : '';
+      const message = error.message.toLowerCase();
+      const reason = /wrongpass|noauth|authentication|invalid password/.test(message) ? 'AUTH' :
+        /certificate|self.signed|unable to verify|tls/.test(message) ? 'TLS' :
+        /timeout|timed out/.test(message) ? 'TIMEOUT' :
+        /enotfound|getaddrinfo/.test(message) ? 'DNS' :
+        /econnrefused|econnreset|ehostunreach|enetunreach/.test(code) ? 'NETWORK' : 'OTHER';
+      this.lastConnectionIssue = reason;
+      console.error('Redis connection failure:', { status: this.redis.status, reason, code: /^[A-Z_]+$/.test(code) ? code : 'UNKNOWN' });
+    });
+    this.redis.on('ready', () => { this.lastConnectionIssue = 'NONE'; });
   }
   private async ready(): Promise<Redis> {
-    if (this.redis.status !== 'ready') {
-      if (!this.connecting) {
-        this.connecting = this.redis.connect().finally(() => { this.connecting = undefined; });
-      }
-      await this.connecting;
+    if (this.redis.status === 'ready') return this.redis;
+    if (!this.connecting) {
+      this.connecting = this.waitUntilReady().finally(() => { this.connecting = undefined; });
     }
+    await this.connecting;
+    if (this.redis.status !== 'ready') throw new Error('Redis not ready: ' + this.lastConnectionIssue);
     return this.redis;
+  }
+  private async waitUntilReady(): Promise<void> {
+    if (this.redis.status === 'ready') return;
+    // connect() is only legal in the 'wait' state. In 'connecting' or
+    // 'reconnecting', let ioredis finish its own transition.
+    const status = this.redis.status;
+    if (status === 'end') throw new Error('Redis connection ended');
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.redis.off('ready', onReady);
+        this.redis.off('end', onEnd);
+      };
+      const onReady = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const onEnd = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Redis connection ended'));
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Redis readiness timeout: ' + this.lastConnectionIssue));
+      }, 10000);
+      this.redis.on('ready', onReady);
+      this.redis.on('end', onEnd);
+      if (this.redis.status === 'ready') { onReady(); return; }
+      if (this.redis.status === 'wait') {
+        this.redis.connect().catch(() => {
+          // The connection error is classified by the event listener.
+          // ioredis may schedule a reconnection; readiness timeout bounds this request.
+        });
+      }
+    });
   }
   private key(value: string): string { return 'auth-service:' + value; }
   async get(key: string): Promise<string | null> {
