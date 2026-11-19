@@ -1,6 +1,8 @@
 import rateLimit, { ipKeyGenerator, type Options, type Store } from 'express-rate-limit';
 import type { Request } from 'express';
 import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
+import { parseServiceKeys, validServiceKey } from './service-auth.middleware.js';
 import { ENV } from '../config/env.js';
 import { ErrorCode } from '../lib/errors.js';
 import { kv } from '../lib/store.js';
@@ -17,7 +19,16 @@ class KvRateLimitStore implements Store {
   async decrement(key: string): Promise<void> { await kv.decr('rate:' + this.namespace + ':' + key); }
   async resetKey(key: string): Promise<void> { await kv.del('rate:' + this.namespace + ':' + key); }
 }
-function byIp(req: Request): string { return ipKeyGenerator(req.ip ?? '127.0.0.1'); }
+// Authenticate the proxy before trusting its original-client IP. Do not use
+// untrusted X-Forwarded-For / X-Client-IP directly from a public caller.
+const trustedProxyKeys = parseServiceKeys(ENV.INTROSPECTION_API_KEYS);
+export function loginClientIp(req: Pick<Request, 'ip' | 'header'>): string {
+  const forwarded = req.header('x-original-client-ip');
+  const key = req.header('x-auth-service-key');
+  if (forwarded && isIP(forwarded) && validServiceKey(key, trustedProxyKeys)) return forwarded;
+  return req.ip ?? '127.0.0.1';
+}
+function byIp(req: Request): string { return ipKeyGenerator(loginClientIp(req)); }
 function byEmail(req: Request): string {
   const value = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   return createHash('sha256').update(value).digest('hex');
