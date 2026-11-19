@@ -26,7 +26,7 @@ To rotate the administrator password:
 1. Generate a new Argon2id hash in a trusted terminal using the installed `argon2` dependency.
 2. Update only `DASHBOARD_OPERATOR_PASSWORD_HASH` in Render. Never paste raw passwords into logs, tickets, or chat.
 3. Redeploy and sign in using the original password (not its hash).
-4. Existing operator sessions are revoked **manually** by removing their Redis session keys if required; merely changing the hash does not instantly terminate all previously issued sessions.
+4. Existing operator sessions become invalid as soon as the new password hash is deployed: the session stores a credential-version fingerprint and the middleware checks it on every authenticated request.
 
 Redis credentials exposed in previous logs must be rotated in Upstash and the updated TLS URL stored only in Render.
 
