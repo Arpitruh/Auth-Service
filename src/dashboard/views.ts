@@ -81,10 +81,10 @@ export function appListPage(apps: DashboardApplication[], notice = "", csrf = ""
   const rows = apps
     .map(
       (app) =>
-        `<tr><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">${esc(app.name)}</a><div class="tiny">${esc(app.slug)}</div></td><td>${esc(app.provider)}<div class="tiny">${esc(app.mode)}</div></td><td>${status(app.status)}</td><td>${status(app.provisionState)}</td><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">Manage ↗</a></td></tr>`,
+        `<tr data-application-row data-status="${esc(app.status)}" data-search="${esc((app.name + " " + app.slug + " " + app.provider).toLowerCase())}"><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">${esc(app.name)}</a><div class="tiny">${esc(app.slug)}</div></td><td>${esc(app.provider)}<div class="tiny">${esc(app.mode)}</div></td><td>${status(app.status)}</td><td>${status(app.provisionState)}</td><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">Manage ↗</a></td></tr>`,
     )
     .join("");
-  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="sub">No projects yet. Create your first app.</td></tr>'}</tbody></table></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
+  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><div class="grid2" style="margin-bottom:16px"><div><label for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search by app name, slug or provider"></div><div><label for="app-status">Filter by status</label><select id="app-status"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option></select></div></div><p class="tiny" id="filter-count" role="status" aria-live="polite"></p><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="sub">No projects yet. Create your first app.</td></tr>'}</tbody></table></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
   return layout("Applications", body, "applications", csrf);
 }
 export function createAppPage(csrf: string, message = ""): string {
@@ -172,7 +172,28 @@ export const dashboardUiScript = `document.addEventListener("submit", function(e
     // Disable after the submit event so the browser includes its form values.
     setTimeout(function() { submitter.disabled = true; }, 0);
   }
-});`;
+});
+(function() {
+  const search = document.getElementById("app-search");
+  const status = document.getElementById("app-status");
+  const counter = document.getElementById("filter-count");
+  if (!(search instanceof HTMLInputElement) || !(status instanceof HTMLSelectElement)) return;
+  const rows = Array.from(document.querySelectorAll("[data-application-row]"));
+  const filter = function() {
+    const query = search.value.trim().toLowerCase();
+    let visible = 0;
+    rows.forEach(function(row) {
+      const matches = (row.getAttribute("data-search") || "").includes(query) &&
+        (!status.value || row.getAttribute("data-status") === status.value);
+      row.hidden = !matches;
+      if (matches) visible++;
+    });
+    if (counter) counter.textContent = visible + " of " + rows.length + " applications shown";
+  };
+  search.addEventListener("input", filter);
+  status.addEventListener("change", filter);
+  filter();
+})();`;
 
 /** Recovery is intentionally operator-assisted: no unauthenticated reset links. */
 export function recoveryPage(): string {
