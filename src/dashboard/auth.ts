@@ -1,5 +1,5 @@
 import argon2 from "argon2";
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { ENV } from "../config/env.js";
 import { kv } from "../lib/store.js";
@@ -9,6 +9,12 @@ const sessionCookie = ENV.IS_PRODUCTION ? "__Host-auth-operator" : "auth_operato
 export interface OperatorSession {
   operator: string;
   csrf: string;
+  credentialVersion: string;
+}
+// Sessions are bound to the configured operator credentials. Rotating the
+// Argon2 hash invalidates all existing Redis sessions without a Redis flush.
+function credentialVersion(): string {
+  return createHash("sha256").update(ENV.DASHBOARD_OPERATOR_PASSWORD_HASH ?? "").digest("hex");
 }
 export function dashboardEnabled(): boolean {
   return !!(
@@ -42,6 +48,7 @@ export async function openOperatorSession(res: Response): Promise<string> {
     JSON.stringify({
       operator: ENV.DASHBOARD_OPERATOR_USERNAME!,
       csrf,
+      credentialVersion: credentialVersion(),
     } satisfies OperatorSession),
     ttlSeconds,
   );
@@ -76,7 +83,9 @@ export async function requireOperator(
       return;
     }
     const session = JSON.parse(raw) as OperatorSession;
-    if (session.operator !== ENV.DASHBOARD_OPERATOR_USERNAME || typeof session.csrf !== "string") {
+    if (session.operator !== ENV.DASHBOARD_OPERATOR_USERNAME ||
+      session.credentialVersion !== credentialVersion() ||
+      typeof session.csrf !== "string") {
       res.redirect(303, "/dashboard/login");
       return;
     }
