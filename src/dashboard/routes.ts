@@ -45,11 +45,24 @@ dashboardRoutes.use((_req, res, next) => {
 });
 function validOrigin(req: Request): boolean {
   const origin = req.get("origin");
+  const host = req.get("host");
+
+  console.log("ORIGIN DEBUG:", {
+    origin,
+    host,
+    production: ENV.IS_PRODUCTION,
+  });
+
   if (!origin) return true;
+
   try {
     const parsed = new URL(origin);
-    return parsed.host === req.get("host") && (!ENV.IS_PRODUCTION || parsed.protocol === "https:");
-  } catch {
+    const valid = parsed.host === host && (!ENV.IS_PRODUCTION || parsed.protocol === "https:");
+
+    console.log("ORIGIN VALID:", valid);
+    return valid;
+  } catch (error) {
+    console.error("ORIGIN ERROR:", error);
     return false;
   }
 }
