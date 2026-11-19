@@ -83,6 +83,9 @@ const envSchema = z.object({
   NOTIFICATION_SERVICE_URL: z.url().optional(),
   NOTIFICATION_API_KEY: z.string().min(32).optional(),
   PASSWORD_RESET_BASE_URL: z.url().optional(),
+  WELCOME_APP_NAME: z.string().min(1).default('Auth Garden'),
+  WELCOME_DASHBOARD_URL: z.url().optional(),
+  WELCOME_NOTIFICATION_APPS: z.string().optional(),
 
   // Prisma connection pool sizing.
   DB_POOL_SIZE: numeric(10),
