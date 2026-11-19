@@ -159,7 +159,6 @@ export class RedisKvStore implements KvStore {
       this.connecting = this.waitUntilReady().finally(() => { this.connecting = undefined; });
     }
     await this.connecting;
-    if (this.redis.status !== 'ready') throw new Error('Redis not ready: ' + this.lastConnectionIssue);
     return this.redis;
   }
   private async waitUntilReady(): Promise<void> {
