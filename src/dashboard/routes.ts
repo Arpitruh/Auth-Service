@@ -24,7 +24,7 @@ import {
   listAppUsers,
   changeAppUserRole,
 } from "./repository.js";
-import { appListPage, createAppPage, detailPage, loginPage, appUsersPage } from "./views.js";
+import { appListPage, createAppPage, detailPage, loginPage, appUsersPage, recoveryPage, dashboardUiScript } from "./views.js";
 
 export const dashboardRoutes = Router();
 dashboardRoutes.use(urlencoded({ extended: false, limit: "16kb" }));
@@ -35,7 +35,7 @@ dashboardRoutes.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   );
   if (!dashboardEnabled()) {
     res.status(404).end();
@@ -45,24 +45,11 @@ dashboardRoutes.use((_req, res, next) => {
 });
 function validOrigin(req: Request): boolean {
   const origin = req.get("origin");
-  const host = req.get("host");
-
-  console.log("ORIGIN DEBUG:", {
-    origin,
-    host,
-    production: ENV.IS_PRODUCTION,
-  });
-
   if (!origin) return true;
-
   try {
     const parsed = new URL(origin);
-    const valid = parsed.host === host && (!ENV.IS_PRODUCTION || parsed.protocol === "https:");
-
-    console.log("ORIGIN VALID:", valid);
-    return valid;
-  } catch (error) {
-    console.error("ORIGIN ERROR:", error);
+    return parsed.host === req.get("host") && (!ENV.IS_PRODUCTION || parsed.protocol === "https:");
+  } catch {
     return false;
   }
 }
@@ -87,6 +74,12 @@ function redirect(res: Response, path: string, message: string): void {
   res.redirect(303, path + "?status=" + encodeURIComponent(message));
 }
 
+dashboardRoutes.get("/ui.js", (_req, res) => {
+  res.type("application/javascript").send(dashboardUiScript);
+});
+dashboardRoutes.get("/recover", (_req, res) => {
+  res.type("html").send(recoveryPage());
+});
 dashboardRoutes.get("/login", (_req, res) => {
   res.type("html").send(loginPage());
 });
@@ -144,7 +137,7 @@ dashboardRoutes.get("/", async (req, res) => {
   try {
     const apps = await listDashboardApps();
     const notice = typeof req.query.status === "string" ? req.query.status.slice(0, 120) : "";
-    res.type("html").send(appListPage(apps, notice));
+    res.type("html").send(appListPage(apps, notice, csrf(res)));
   } catch {
     res.status(503).send("Control plane unavailable");
   }
