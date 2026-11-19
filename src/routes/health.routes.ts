@@ -25,9 +25,9 @@ router.get('/ready', async (_req: Request, res: Response) => {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-  } catch (err) {
+  } catch {
     checks.db = 'error';
-    logger.error({ err, event: 'readiness_db_fail' }, 'DB readiness check failed');
+    logger.warn({ event: 'readiness_db_fail' }, 'DB readiness check failed');
   }
 
   try {
