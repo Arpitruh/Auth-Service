@@ -110,7 +110,12 @@ dashboardRoutes.post("/login", async (req, res) => {
     await openOperatorSession(res);
     await kv.del("dashboard:login:" + fingerprint);
     res.redirect(303, "/dashboard");
-  } catch {
+  } catch (error) {
+    // Log only an error category/code; never expose Redis URLs, credentials or session data.
+    const code = error && typeof error === "object" && "code" in error &&
+      typeof error.code === "string" ? error.code : "UNKNOWN";
+    const kind = error instanceof Error ? error.constructor.name : typeof error;
+    console.error("Dashboard session store failure:", { code, kind });
     res.status(503).type("html").send(loginPage("Session store unavailable"));
   }
 });
