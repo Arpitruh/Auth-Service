@@ -51,6 +51,12 @@ export function createApp() {
   app.use(oidcRoutes);
   app.use('/dashboard',dashboardRoutes);
 
+  // Route visitors through the dashboard's existing session check.
+  // Authenticated operators see the dashboard; others reach its login page.
+  app.get('/', (_req, res) => {
+    res.redirect(302, '/dashboard');
+  });
+
   // 404 for anything unmatched, then the centralized error handler last.
   app.use(notFoundHandler);
   app.use(errorHandler);
