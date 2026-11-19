@@ -15,7 +15,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   resetUrl.searchParams.set('token', token);
   const response = await fetch(new URL('/api/v1/notifications/send', service), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-notification-api-key': apiKey },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: JSON.stringify({
       recipient: email, channel: 'email', templateId: 'forgot-password',
       payloadData: { name: 'there', resetUrl: resetUrl.toString(), expiresInMinutes: ENV.RESET_TOKEN_TTL_MINUTES },
