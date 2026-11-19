@@ -121,7 +121,8 @@ dashboardRoutes.post("/login", async (req, res) => {
       /getaddrinfo|enotfound|dns/.test(detail) ? "DNS" :
       /connect|socket|network/.test(detail) ? "NETWORK" : "OTHER";
     console.error("Dashboard session store failure:", { code, kind, reason });
-    res.status(503).type("html").send(loginPage("Session store unavailable"));
+    const reference = String(res.getHeader("x-request-id") ?? "unknown");
+    res.status(503).type("html").send(loginPage("Session service is temporarily unavailable. Please try again. Reference: " + reference));
   }
 });
 dashboardRoutes.use(requireOperator);
@@ -139,7 +140,7 @@ dashboardRoutes.get("/", async (req, res) => {
     const notice = typeof req.query.status === "string" ? req.query.status.slice(0, 120) : "";
     res.type("html").send(appListPage(apps, notice, csrf(res)));
   } catch {
-    res.status(503).send("Control plane unavailable");
+    res.status(503).type("text").send("Application directory temporarily unavailable. Request ID: " + String(res.getHeader("x-request-id") ?? "unknown"));
   }
 });
 dashboardRoutes.get("/new", (_req, res) => res.type("html").send(createAppPage(csrf(res))));
