@@ -115,7 +115,19 @@ dashboardRoutes.post("/login", async (req, res) => {
     const code = error && typeof error === "object" && "code" in error &&
       typeof error.code === "string" ? error.code : "UNKNOWN";
     const kind = error instanceof Error ? error.constructor.name : typeof error;
-    console.error("Dashboard session store failure:", { code, kind });
+    // Classify failure messages without logging arbitrary server errors, URLs or secrets.
+    const detail = error instanceof Error ? error.message.toLowerCase() : "";
+    const reason =
+      /already connecting|already connected/.test(detail) ? "ALREADY_CONNECTING" :
+      /connection is closed|connection closed|socket closed/.test(detail) ? "CONNECTION_CLOSED" :
+      /offline queue|stream isn't writeable|stream is not writable/.test(detail) ? "OFFLINE_QUEUE" :
+      /max retries|retries per request/.test(detail) ? "RETRIES_EXHAUSTED" :
+      /timeout|timed out/.test(detail) ? "TIMEOUT" :
+      /certificate|self.signed|unable to verify/.test(detail) ? "TLS_CERTIFICATE" :
+      /wrongpass|noauth|authentication|invalid password/.test(detail) ? "AUTHENTICATION" :
+      /getaddrinfo|enotfound|dns/.test(detail) ? "DNS" :
+      /connect|socket|network/.test(detail) ? "NETWORK" : "OTHER";
+    console.error("Dashboard session store failure:", { code, kind, reason });
     res.status(503).type("html").send(loginPage("Session store unavailable"));
   }
 });
