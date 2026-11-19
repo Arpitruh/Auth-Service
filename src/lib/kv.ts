@@ -16,6 +16,8 @@ import { Redis } from 'ioredis';
  * Provision Redis and implement RedisKvStore before scaling horizontally.
  */
 export interface KvStore {
+  /** Lightweight connectivity probe used by readiness, never mutates session keys. */
+  ping(): Promise<boolean>;
   /** Get a value, or null if missing/expired. */
   get(key: string): Promise<string | null>;
   /** Atomic read-and-delete for one-time authorization codes. */
@@ -69,6 +71,8 @@ export class InMemoryKvStore implements KvStore {
       if (entry.expiresAt <= now) this.map.delete(key);
     }
   }
+
+  async ping(): Promise<boolean> { return true; }
 
   async get(key: string): Promise<string | null> {
     const entry = this.map.get(key);
@@ -216,6 +220,7 @@ export class RedisKvStore implements KvStore {
     });
   }
   private key(value: string): string { return 'auth-service:' + value; }
+  async ping(): Promise<boolean> { return (await (await this.ready()).ping()) === 'PONG'; }
   async get(key: string): Promise<string | null> {
     return (await this.ready()).get(this.key(key));
   }
