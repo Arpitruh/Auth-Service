@@ -10,6 +10,7 @@ import { getApplicationSettings } from '../dashboard/repository.js';
 import { validate } from '../middlewares/validate.js';
 import { registerSchema, loginSchema } from '../schemas/auth.schema.js';
 import type { VerifiedTenant } from './client-credentials.js';
+import { notifyTenantRegistration } from '../lib/welcome-notification.js';
 
 export const tenantRoutes = Router();
 tenantRoutes.use(requireVerifiedTenant);
@@ -47,12 +48,16 @@ tenantRoutes.post('/register', validate(registerSchema), async (req, res) => {
         // The event is committed in the SAME tenant database transaction.
         // Missing notification configuration means the relay will retain this
         // event for later setup, rather than silently dropping registrations.
-        await tx.registrationEventOutbox.create({
-          data: { userId: user.id, recipient: user.email },
-        });
+        if (ENV.TENANT_REGISTRATION_OUTBOX_ENABLED) {
+          await tx.registrationEventOutbox.create({
+            data: { userId: user.id, recipient: user.email },
+          });
+        }
         return { id: user.id, email: user.email, role: user.role };
       });
     });
+    // Backwards-compatible path until every production tenant DB is migrated.
+    if (!ENV.TENANT_REGISTRATION_OUTBOX_ENABLED) await notifyTenantRegistration(tenant.id, result);
     res.status(201).json({ user: result,
       accessToken: issueTenantAccessToken(tenant.id, tenant.clientId, result) });
   } catch (err) {
