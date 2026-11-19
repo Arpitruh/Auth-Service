@@ -92,7 +92,37 @@ const envSchema = z.object({
     .default('info'),
 });
 
-const parsed = envSchema.safeParse(process.env);
+// Validate cross-field requirements without echoing secret values to logs.
+const validatedEnvSchema = envSchema.superRefine((env, ctx) => {
+  const dashboardConfigured = Boolean(env.CONTROL_PLANE_DATABASE_URL || env.DASHBOARD_OPERATOR_USERNAME || env.DASHBOARD_OPERATOR_PASSWORD_HASH);
+  if (dashboardConfigured) {
+    if (!env.CONTROL_PLANE_DATABASE_URL) ctx.addIssue({ code: 'custom', path: ['CONTROL_PLANE_DATABASE_URL'], message: 'Required for the operator dashboard' });
+    if (!env.DASHBOARD_OPERATOR_USERNAME) ctx.addIssue({ code: 'custom', path: ['DASHBOARD_OPERATOR_USERNAME'], message: 'Required for the operator dashboard' });
+    if (!env.DASHBOARD_OPERATOR_PASSWORD_HASH) ctx.addIssue({ code: 'custom', path: ['DASHBOARD_OPERATOR_PASSWORD_HASH'], message: 'Required for the operator dashboard' });
+    if (env.NODE_ENV === 'production' && !env.REDIS_URL) ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'Redis required for production operator sessions' });
+  }
+  if (env.CONTROL_PLANE_DATABASE_URL && env.CONTROL_PLANE_DATABASE_URL === env.DATABASE_URL) {
+    ctx.addIssue({ code: 'custom', path: ['CONTROL_PLANE_DATABASE_URL'], message: 'Must use a separate control-plane database' });
+  }
+  if (env.CONTROL_PLANE_ENCRYPTION_KEY) {
+    const raw = env.CONTROL_PLANE_ENCRYPTION_KEY;
+    if (!/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/.test(raw) || Buffer.from(raw, 'base64').length !== 32) {
+      ctx.addIssue({ code: 'custom', path: ['CONTROL_PLANE_ENCRYPTION_KEY'], message: 'Expected a Base64-encoded 32-byte key' });
+    }
+  }
+  if (env.REDIS_URL) {
+    try {
+      const url = new URL(env.REDIS_URL);
+      if (!['redis:', 'rediss:'].includes(url.protocol) || !url.hostname) throw new Error();
+      // Upstash TCP requires TLS. ioredis also enforces TLS explicitly for this provider.
+      if (env.NODE_ENV === 'production' && !url.hostname.endsWith('.upstash.io') && url.protocol !== 'rediss:') throw new Error();
+    } catch {
+      ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'Expected a valid Redis URL (TLS in production)' });
+    }
+  }
+});
+
+const parsed = validatedEnvSchema.safeParse(process.env);
 
 if (!parsed.success) {
   const issues = parsed.error.issues
