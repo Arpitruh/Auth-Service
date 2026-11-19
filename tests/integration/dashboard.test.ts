@@ -37,6 +37,9 @@ describe.skipIf(!process.env.RUN_CONTROL_TESTS || !ENV.DASHBOARD_OPERATOR_PASSWO
       const dashboard=await request(app).get('/dashboard').set('Cookie',cookie);
       expect(dashboard.status).toBe(200);
       expect(dashboard.text).toContain('Your applications');
+      expect(dashboard.text).toContain('action="/dashboard/logout"');
+      expect(dashboard.text).toContain('Sign out securely');
+      expect(dashboard.text).toContain('name="_csrf"');
       const newPage=await request(app).get('/dashboard/new').set('Cookie',cookie);
       expect(newPage.status).toBe(200);
       csrf=/name="_csrf" value="([^"]+)"/.exec(newPage.text)?.[1]??'';
@@ -116,6 +119,11 @@ describe.skipIf(!process.env.RUN_CONTROL_TESTS || !ENV.DASHBOARD_OPERATOR_PASSWO
     },30000);
 
     it('logs out and revokes the operator session',async()=>{
+      const rejected=await request(app).post('/dashboard/logout').set('Cookie',cookie)
+        .type('form').send({_csrf:'wrong'});
+      expect(rejected.status).toBe(400);
+      const stillSignedIn=await request(app).get('/dashboard').set('Cookie',cookie);
+      expect(stillSignedIn.status).toBe(200);
       const logout=await request(app).post('/dashboard/logout').set('Cookie',cookie)
         .type('form').send({_csrf:csrf});
       expect(logout.status).toBe(303);
