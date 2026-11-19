@@ -132,7 +132,19 @@ export class RedisKvStore implements KvStore {
   private connecting: Promise<void> | undefined;
   private lastConnectionIssue = 'NONE';
   constructor(url: string) {
+    const parsed = new URL(url);
+    const upstash = parsed.hostname === 'upstash.io' || parsed.hostname.endsWith('.upstash.io');
+    // Upstash TCP endpoints require TLS, even when the CLI supplies redis:// with --tls.
+    // Never log the URL: it includes credentials.
+    if (!['redis:', 'rediss:'].includes(parsed.protocol)) {
+      throw new Error('Redis URL must use redis:// or rediss://');
+    }
+    console.info('Redis connection configuration:', {
+      provider: upstash ? 'upstash' : 'other',
+      tls: upstash || parsed.protocol === 'rediss:',
+    });
     this.redis = new Redis(url, {
+      ...(upstash ? { tls: { servername: parsed.hostname } } : {}),
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
