@@ -68,3 +68,20 @@ export async function revokeApplicationKey(applicationId: string, digest: string
   );
 }
 export async function closeTenantCredentials(): Promise<void> { await pool?.end(); }
+
+/** Internal relay discovery only; never expose secretRef in public responses.
+ * Bounded cursor pagination avoids loading the whole tenant registry at once.
+ */
+export async function listTenantsForNotificationOutbox(afterId = '', limit = 2): Promise<VerifiedTenant[]> {
+  if (!pool) return [];
+  const result = await pool.query<VerifiedTenant>(`
+    SELECT a."id", a."clientId", a."status", b."secretRef", b."schemaVersion"
+    FROM "ControlApplication" a
+    JOIN "ControlDatabaseBinding" b ON b."applicationId" = a."id"
+    WHERE a."status" = 'ACTIVE' AND b."provisionState" = 'READY'
+      AND b."secretRef" IS NOT NULL AND b."schemaVersion" IS NOT NULL
+      AND a."id" > $1
+    ORDER BY a."id" ASC LIMIT $2
+  `, [afterId, Math.max(1, Math.min(10, limit))]);
+  return result.rows;
+}

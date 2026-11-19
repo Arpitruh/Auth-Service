@@ -8,8 +8,12 @@ import { closeOidcPool } from './oidc/app.js';
 import { closeDashboardRepo } from './dashboard/repository.js';
 import { closeTenantCredentials } from './tenant/client-credentials.js';
 import { closeSecretStore } from './provisioning/secrets.js';
+import { startRegistrationOutboxRelay } from './lib/registration-outbox.js';
+import { startTenantRegistrationOutboxRelay } from './tenant/registration-outbox.js';
 
 const app = createApp();
+const registrationRelay = startRegistrationOutboxRelay();
+const tenantRegistrationRelay = startTenantRegistrationOutboxRelay();
 
 const server = app.listen(ENV.PORT, () => {
   logger.info({ port: ENV.PORT }, 'Auth Service running');
@@ -31,6 +35,8 @@ async function shutdown(signal: string): Promise<void> {
 
   server.close(async () => {
     try {
+      await registrationRelay.stop();
+      await tenantRegistrationRelay.stop();
       await tenantPool.close();
       await Promise.all([closeTenantCredentials(), closeSecretStore(), closeOidcPool(), closeDashboardRepo()]);
       await prisma.$disconnect();

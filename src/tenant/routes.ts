@@ -43,10 +43,21 @@ tenantRoutes.post('/register', validate(registerSchema), async (req, res) => {
     const { email, password } = identity(req);
     const result = await tenantPool.withTenant(tenant, async db => {
       const passwordHash = await argon2.hash(password);
-      const user = await db.user.create({ data: { email, password: passwordHash } });
-      return { id: user.id, email: user.email, role: user.role };
+      return db.$transaction(async tx => {
+        const user = await tx.user.create({ data: { email, password: passwordHash } });
+        // The event is committed in the SAME tenant database transaction.
+        // Missing notification configuration means the relay will retain this
+        // event for later setup, rather than silently dropping registrations.
+        if (ENV.TENANT_REGISTRATION_OUTBOX_ENABLED) {
+          await tx.registrationEventOutbox.create({
+            data: { userId: user.id, recipient: user.email },
+          });
+        }
+        return { id: user.id, email: user.email, role: user.role };
+      });
     });
-    await notifyTenantRegistration(tenant.id, result);
+    // Backwards-compatible path until every production tenant DB is migrated.
+    if (!ENV.TENANT_REGISTRATION_OUTBOX_ENABLED) await notifyTenantRegistration(tenant.id, result);
     res.status(201).json({ user: result,
       accessToken: issueTenantAccessToken(tenant.id, tenant.clientId, result) });
   } catch (err) {

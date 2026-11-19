@@ -93,22 +93,28 @@ export const authService = {
     // the unique constraint as the source of truth for idempotency.
     const passwordHash = await argon2.hash(password);
 
-    let user;
+    let registration;
     try {
-      user = await prisma.user.create({
-        data: { email, password: passwordHash },
+      // Registration, initial refresh token and welcome-event outbox commit
+      // together. If any row fails, none of them is left half-created.
+      registration = await prisma.$transaction(async tx => {
+        const user = await tx.user.create({ data: { email, password: passwordHash } });
+        const publicUser = toPublicUser(user);
+        const tokens = await issueTokens(publicUser, ctx, tx);
+        await tx.registrationEventOutbox.create({
+          data: { userId: user.id, recipient: user.email },
+        });
+        return { user: publicUser, tokens };
       });
     } catch (err) {
-      // Unique-constraint violation → account already exists (idempotent 409).
       if (isUniqueViolation(err)) {
         throw conflict('An account with this email already exists.');
       }
       throw err;
     }
 
-    const publicUser = toPublicUser(user);
-    const tokens = await issueTokens(publicUser, ctx);
-    logger.info({ userId: user.id, event: 'register' }, 'user registered');
+    const { user: publicUser, tokens } = registration;
+    logger.info({ userId: publicUser.id, event: 'register' }, 'user registered');
     return { user: publicUser, tokens };
   },
 

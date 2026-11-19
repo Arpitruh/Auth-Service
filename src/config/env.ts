@@ -86,6 +86,8 @@ const envSchema = z.object({
   WELCOME_APP_NAME: z.string().min(1).default('Auth Garden'),
   WELCOME_DASHBOARD_URL: z.url().optional(),
   WELCOME_NOTIFICATION_APPS: z.string().optional(),
+  // Opt in only after ALL active tenant databases have the registration-outbox migration.
+  TENANT_REGISTRATION_OUTBOX_ENABLED: booleanish(false),
 
   // Prisma connection pool sizing.
   DB_POOL_SIZE: numeric(10),

@@ -6,13 +6,13 @@ import { logger } from './logger.js';
  * Notification Garden chooses the published template, branding and destination URL.
  * The only per-app secret here is the backend's Notification API key.
  */
-type WelcomeConfig = { apiKey: string };
+export type WelcomeConfig = { apiKey: string };
 
 function validConfig(config: unknown): config is WelcomeConfig {
   return !!config && typeof config === 'object' &&
     'apiKey' in config && typeof config.apiKey === 'string' && config.apiKey.length >= 32;
 }
-function tenantWelcomeConfig(tenantId: string): WelcomeConfig | null {
+export function tenantWelcomeConfig(tenantId: string): WelcomeConfig | null {
   if (!ENV.WELCOME_NOTIFICATION_APPS) return null;
   const all: unknown = JSON.parse(ENV.WELCOME_NOTIFICATION_APPS);
   if (!all || typeof all !== 'object' || Array.isArray(all)) return null;

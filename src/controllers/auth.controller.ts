@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import type { CookieOptions } from 'express';
 import { authService, type IssueContext } from '../services/auth.service.js';
 import { ENV, REFRESH_TOKEN_TTL_MS } from '../config/env.js';
-import { notifyLegacyRegistration } from '../lib/welcome-notification.js';
 
 /**
  * CSRF / cookie policy decision (Phase 2, spec section 6):
@@ -68,8 +67,7 @@ export const authController = {
         password,
         issueContext(req),
       );
-      // Registration has committed; notification failures must not invalidate it.
-      await notifyLegacyRegistration(user);
+      // Registration event is durably recorded in the same database transaction.
       setRefreshCookie(res, tokens.refreshToken);
       res.status(201).json({ user, accessToken: tokens.accessToken });
     } catch (err) {

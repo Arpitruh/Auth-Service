@@ -17,6 +17,7 @@ model User {
   updatedAt     DateTime             @updatedAt
   refreshTokens RefreshToken[]
   resetTokens   PasswordResetToken[]
+  registrationEvents RegistrationEventOutbox[]
 }
 
 model RefreshToken {
@@ -44,4 +45,21 @@ model PasswordResetToken {
   usedAt    DateTime?
 
   @@index([userId])
+}
+
+/** Durable event committed atomically with a legacy auth registration. */
+model RegistrationEventOutbox {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipient     String
+  createdAt     DateTime @default(now())
+  nextAttemptAt DateTime @default(now())
+  claimedUntil  DateTime?
+  attempts      Int      @default(0)
+  deliveredAt   DateTime?
+  lastError     String?
+  @@unique([userId])
+  @@index([deliveredAt, nextAttemptAt])
+  @@map("registration_event_outbox")
 }
