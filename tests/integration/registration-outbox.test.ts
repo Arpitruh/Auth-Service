@@ -53,6 +53,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== '1')('registration outbox persisten
       expect(first.deliveredAt).toBeNull();
 
       await dispatchRegistrationEvents();
+      expect(mockedFetch).toHaveBeenCalledTimes(1);
       const afterFailure = await prisma.registrationEventOutbox.findUniqueOrThrow({
         where: { userId: id },
       });
@@ -65,6 +66,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== '1')('registration outbox persisten
         data: { nextAttemptAt: new Date(Date.now() - 1000), claimedUntil: null },
       });
       await dispatchRegistrationEvents();
+      expect(mockedFetch).toHaveBeenCalledTimes(2);
 
       const accepted = await prisma.registrationEventOutbox.findUniqueOrThrow({
         where: { userId: id },
