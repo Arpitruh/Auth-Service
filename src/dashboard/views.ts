@@ -17,7 +17,7 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}b
 .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.4px;font-size:21px}.mark{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--sage);color:var(--forest);font-size:24px}
 .nav{display:grid;gap:7px}.nav a{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:11px;color:#e3e9d9}
 .nav a.active,.nav a:hover{background:rgba(235,235,216,.15);color:#fff}.nav span{font-size:20px}.asidefoot{margin-top:auto;color:#d0dac5;font-size:12px}
-.main{padding:39px clamp(22px,5vw,70px);max-width:1500px;width:100%;margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:34px}
+.main{padding:39px clamp(22px,5vw,70px) 22px;max-width:1500px;width:100%;margin:0 auto;min-width:0;display:flex;flex-direction:column;min-height:100vh}.main-content{flex:1;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:34px}
 .eyebrow{text-transform:uppercase;font-weight:700;letter-spacing:2px;font-size:11px;color:var(--olive)}h1{font-size:clamp(29px,4vw,43px);letter-spacing:-1.7px;line-height:1.12;margin:5px 0 10px;color:var(--forest)}h2{font-size:20px;letter-spacing:-.5px;margin:0 0 14px}
 .sub{color:#69735f;margin:0 0 24px}.btn{display:inline-flex;justify-content:center;align-items:center;gap:10px;background:var(--olive);color:white;border:0;border-radius:11px;padding:12px 18px;font-weight:700}
 .btn:hover{background:var(--forest)}.btn.light{background:var(--cream);color:var(--forest);border:1px solid #b4bea4}.btn.danger{background:#8d5548}
@@ -38,9 +38,31 @@ input:focus,select:focus,textarea:focus{border-color:var(--olive);box-shadow:0 0
 .login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 15% 10%,#c7cfb5 0,transparent 40%),var(--cream)}
 .login-card{background:var(--white);border:1px solid #cbd4ba;border-radius:23px;padding:38px;max-width:430px;width:100%;box-shadow:0 30px 100px rgba(69,82,48,.09)}
 .metric-line{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #e4e8dc}.metric-line:last-child{border-bottom:none}
+:focus-visible{outline:3px solid #91a96c;outline-offset:3px}
+.btn,.nav a,.appname{transition:background .18s,transform .18s,box-shadow .18s}.btn:active:not(:disabled){transform:scale(.985)}
+.btn[aria-busy=true],button[aria-busy=true]{opacity:.78;cursor:progress}
+.btn[aria-busy=true]::before,button[aria-busy=true]::before{content:'';display:inline-block;width:15px;height:15px;flex:0 0 15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:auth-spin .7s linear infinite}
+.auth-foot{border-top:1px solid #d3d9c6;padding:26px 0 10px;margin-top:auto;color:#68775b}
+.auth-foot-grid{display:grid;grid-template-columns:minmax(180px,1.6fr) repeat(2,minmax(110px,1fr));gap:22px}
+.auth-foot strong{display:block;color:var(--forest);margin-bottom:8px;font-size:14px}.auth-foot p{font-size:12px;line-height:1.65;margin:5px 0;color:#68775b}.auth-foot nav{display:grid;gap:9px}.auth-foot a{font-size:12px;color:#455230;text-decoration:underline;text-underline-offset:3px}
+.auth-foot-line{border-top:1px solid #d3d9c6;margin-top:19px;padding-top:15px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-size:12px}
+.login-wrap{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:35px}.login-card{margin:auto}.login-wrap>.auth-foot{width:min(100%,1080px);margin:0 auto}
+.empty-state{text-align:center;padding:50px 24px;background:linear-gradient(140deg,#f8faf1,#eef1e3);border:1px dashed #bdcba9;border-radius:16px}
+.empty-icon{width:58px;height:58px;display:grid;place-items:center;margin:0 auto 17px;background:#dde8cc;color:var(--forest);font-size:28px;border-radius:17px}
+.empty-state h3{margin:0 0 7px;color:var(--forest);font-size:21px}.empty-state p{max-width:530px;margin:0 auto 19px;color:#67745d}
+.empty-state .btn{display:inline-flex}.table-wrap{overflow-x:auto;width:100%}
+.nav-progress{position:fixed;z-index:100;inset:0;background:rgba(241,244,232,.92);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:20px}
+.nav-progress[aria-hidden=false]{display:flex}.nav-progress-card{width:min(580px,100%);background:var(--white);padding:28px;border:1px solid #d3d9c6;border-radius:18px;box-shadow:0 20px 60px #28311f17}
+.nav-progress-card strong{display:block;color:var(--forest);font-size:18px;margin-bottom:7px}
+.loading-bar{height:14px;border-radius:8px;background:linear-gradient(90deg,#e6ebd9 0%,#fafbf4 45%,#e6ebd9 90%);background-size:220% 100%;animation:auth-shimmer 1.4s linear infinite;margin-top:17px}
+.loading-bar.short{width:45%}.loading-bar.medium{width:75%}.loading-bar.full{height:22px;width:100%}
+.form-error{border-radius:9px;padding:12px;background:#f6dfd6;color:#893d2e;font-size:13px}.filter-empty{padding:22px;text-align:center;color:#647454}
+@keyframes auth-spin{to{transform:rotate(360deg)}}@keyframes auth-shimmer{to{background-position-x:-220%}}
+@media(prefers-reduced-motion:reduce){.loading-bar,.btn[aria-busy=true]::before,button[aria-busy=true]::before{animation:none!important}.btn,.nav a,.appname{transition:none!important}}
 @media(max-width:920px){.shell{grid-template-columns:1fr}.aside{padding:17px;gap:13px}.nav{display:flex;flex-wrap:wrap}.asidefoot{display:none}.main{padding:25px}.cards{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
-@media(max-width:600px){.top,.panelhead{flex-direction:column;align-items:flex-start}table{font-size:12px}td,th{padding:10px 4px}}
+@media(max-width:600px){.top,.panelhead{flex-direction:column;align-items:flex-start}table{font-size:12px}td,th{padding:10px 4px}.auth-foot-grid{grid-template-columns:1fr 1fr}.auth-foot-grid>div:first-child{grid-column:1/-1}.main{padding:22px 17px 10px}.empty-state{padding:30px 16px}}
 `;
+const siteFooter = "<footer class=\"auth-foot\" aria-label=\"Website footer\"><div class=\"auth-foot-grid\"><div><strong>✳ Auth Garden</strong><p>A home for your application identities. Set up clients, manage access and keep each project's user database separate.</p></div><div><strong>Platform</strong><nav aria-label=\"Platform links\"><a href=\"/dashboard\">Applications</a><a href=\"/dashboard/new\">Create application</a><a href=\"/health\" target=\"_blank\" rel=\"noopener noreferrer\">Service health</a></nav></div><div><strong>Resources</strong><nav aria-label=\"Resource links\"><a href=\"/docs\" target=\"_blank\" rel=\"noopener noreferrer\">API documentation</a><a href=\"https://github.com/Arpitruh/Auth-Service\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub repository</a></nav></div></div><div class=\"auth-foot-line\"><span>© 2026 Auth Garden. Built for isolated app authentication.</span><span>Secure control plane · Auth Service</span></div></footer>";
 function document(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="same-origin"><title>${esc(title)} · Auth Garden</title><style>${css}</style><script src="/dashboard/ui.js" defer></script></head><body>${body}</body></html>`;
 }
@@ -58,7 +80,7 @@ export function layout(title: string, body: string, active = "applications", csr
   const account = csrf ? `<form class="nav-logout" method="post" action="/dashboard/logout"><input type="hidden" name="_csrf" value="${esc(csrf)}"><button type="submit">Sign out securely →<span class="busy-note">Signing out…</span></button></form>` : "";
   return document(
     title,
-    `<div class="shell"><aside class="aside"><div class="brand"><div class="mark">✳</div> Auth Garden</div><nav class="nav">${links}</nav>${account}<div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><main class="main">${body}</main></div>`,
+    `<div class="shell"><aside class="aside"><div class="brand"><div class="mark">✳</div> Auth Garden</div><nav class="nav" aria-label="Main navigation">${links}</nav>${account}<div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><main class="main"><div class="main-content">${body}</div>${siteFooter}</main></div>`,
   );
 }
 export function status(value: string): string {
@@ -72,7 +94,7 @@ export function flash(message: string, kind: "success" | "warn" | "error" = "suc
 export function loginPage(message?: string): string {
   return document(
     "Operator sign in",
-    `<div class="login-wrap"><div class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><p class="eyebrow" style="margin-top:36px">Secure operator access</p><h1>Welcome back.</h1><p class="sub">Sign in to manage your isolated application identities.</p>${message ? flash(message, "error") : ""}<form method="post" action="/dashboard/login"><div class="formrow"><label>Operator username</label><input name="username" autocomplete="username" required maxlength="120"></div><div class="formrow"><label>Password</label><input name="password" type="password" autocomplete="current-password" required maxlength="1024"></div><button class="btn" style="width:100%">Sign in securely →<span class="busy-note"> Signing in…</span></button></form><a class="auth-recovery" href="/dashboard/recover">Need to reset your operator password?</a><p class="tiny" style="margin-top:25px">Operator sessions are private, expiring and server-side.</p></div></div>`,
+    `<div class="login-wrap"><div class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><p class="eyebrow" style="margin-top:36px">Secure operator access</p><h1>Welcome back.</h1><p class="sub">Sign in to manage your isolated application identities.</p>${message ? flash(message, "error") : ""}<form method="post" action="/dashboard/login"><div class="formrow"><label>Operator username</label><input name="username" autocomplete="username" required maxlength="120"></div><div class="formrow"><label>Password</label><input name="password" type="password" autocomplete="current-password" required maxlength="1024"></div><button class="btn" style="width:100%">Sign in securely →<span class="busy-note"> Signing in…</span></button></form><a class="auth-recovery" href="/dashboard/recover">Need to reset your operator password?</a><p class="tiny" style="margin-top:25px">Operator sessions are private, expiring and server-side.</p></div>${siteFooter}</div>`,
   );
 }
 export function appListPage(apps: DashboardApplication[], notice = "", csrf = ""): string {
@@ -84,7 +106,7 @@ export function appListPage(apps: DashboardApplication[], notice = "", csrf = ""
         `<tr data-application-row data-status="${esc(app.status)}" data-search="${esc((app.name + " " + app.slug + " " + app.provider).toLowerCase())}"><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">${esc(app.name)}</a><div class="tiny">${esc(app.slug)}</div></td><td>${esc(app.provider)}<div class="tiny">${esc(app.mode)}</div></td><td>${status(app.status)}</td><td>${status(app.provisionState)}</td><td><a class="appname" href="/dashboard/apps/${encodeURIComponent(app.id)}">Manage ↗</a></td></tr>`,
     )
     .join("");
-  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><div class="grid2" style="margin-bottom:16px"><div><label for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search by app name, slug or provider"></div><div><label for="app-status">Filter by status</label><select id="app-status"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option></select></div></div><p class="tiny" id="filter-count" role="status" aria-live="polite"></p><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="sub">No projects yet. Create your first app.</td></tr>'}</tbody></table></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
+  const body = `<div class="top"><div><div class="eyebrow">Overview / Control plane</div><h1>Your applications</h1><p class="sub">One dashboard. Separate identities for every project.</p></div><a class="btn" href="/dashboard/new">＋ New application</a></div>${notice ? flash(notice) : ""}<div class="cards"><section class="stat"><div class="statlabel">Total applications</div><div class="statvalue">${apps.length}</div></section><section class="stat"><div class="statlabel">Active projects</div><div class="statvalue">${active}</div></section><section class="stat"><div class="statlabel">Databases ready</div><div class="statvalue">${ready}</div></section></div><section class="panel"><div class="panelhead"><h2>Application directory</h2><span class="pill">${apps.length} projects</span></div><div class="grid2" style="margin-bottom:16px"><div><label for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search by app name, slug or provider"></div><div><label for="app-status">Filter by status</label><select id="app-status"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option></select></div></div><p class="tiny" id="filter-count" role="status" aria-live="polite"></p><div class="table-wrap"><table><thead><tr><th>Application</th><th>Database</th><th>App status</th><th>Provisioning</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon" aria-hidden="true">▦</div><h3>Your application directory is ready</h3><p>No Auth Garden applications are registered in this control plane yet. Apps created in Notification Service are managed separately and do not appear here automatically.</p><a class="btn" href="/dashboard/new">＋ Create your first application</a><p class="tiny" style="margin-top:16px">Creating a draft does not provision or charge for a database.</p></div></td></tr>'}</tbody></table></div></section><div class="notice">Every application's identity records remain in its own PostgreSQL database. This control plane stores only configuration and encrypted connection references.</div>`;
   return layout("Applications", body, "applications", csrf);
 }
 export function createAppPage(csrf: string, message = ""): string {
@@ -161,24 +183,75 @@ export function appUsersPage(
 }
 
 /** External JS is permitted by our strict CSP; no inline scripts or unsafe-inline. */
-export const dashboardUiScript = `document.addEventListener("submit", function(event) {
-  const form = event.target;
-  if (!(form instanceof HTMLFormElement) || form.dataset.submitting === "1") return;
-  if (!form.checkValidity()) return;
-  form.dataset.submitting = "1";
-  form.classList.add("is-submitting");
-  const submitter = event.submitter;
-  if (submitter instanceof HTMLButtonElement) {
-    // Disable after the submit event so the browser includes its form values.
-    setTimeout(function() { submitter.disabled = true; }, 0);
+export const dashboardUiScript = `(function() {
+  // Progressive enhancement: navigation and forms still work without JS.
+  const overlay = document.createElement("div");
+  overlay.className = "nav-progress";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.innerHTML = '<div class="nav-progress-card"><strong id="progress-title">Loading your workspace…</strong><p class="sub">Getting the next page ready.</p><div class="loading-bar full"></div><div class="loading-bar medium"></div><div class="loading-bar short"></div></div>';
+  document.body.appendChild(overlay);
+  function loading(message) {
+    const title = document.getElementById("progress-title");
+    if (title) title.textContent = message;
+    overlay.setAttribute("aria-hidden", "false");
   }
-});
-(function() {
+  function reset() {
+    overlay.setAttribute("aria-hidden", "true");
+    document.querySelectorAll("form.is-submitting").forEach(function(form) {
+      form.classList.remove("is-submitting");
+      form.dataset.submitting = "0";
+      form.querySelectorAll("button[aria-busy=true]").forEach(function(button) {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      });
+    });
+  }
+  window.addEventListener("pageshow", reset);
+
+  document.addEventListener("submit", function(event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.dataset.submitting === "1") { event.preventDefault(); return; }
+    if (!form.checkValidity()) return;
+    form.dataset.submitting = "1";
+    form.classList.add("is-submitting");
+    const submitter = event.submitter instanceof HTMLButtonElement
+      ? event.submitter : form.querySelector("button[type=submit], button:not([type])");
+    if (submitter instanceof HTMLButtonElement) {
+      submitter.setAttribute("aria-busy", "true");
+      // Defer disabled state so the browser can capture submitter form values.
+      setTimeout(function() { submitter.disabled = true; }, 0);
+    }
+    loading(form.action.includes("/login") ? "Signing in securely…" :
+      form.action.includes("/logout") ? "Signing out…" : "Saving your changes…");
+  });
+
+  document.addEventListener("click", function(event) {
+    if (!(event.target instanceof Element)) return;
+    const link = event.target.closest("a[href]");
+    if (!(link instanceof HTMLAnchorElement) || event.defaultPrevented ||
+      event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+      (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin || url.pathname === location.pathname && url.search === location.search) return;
+    loading("Opening " + (link.textContent.trim() || "page") + "…");
+  });
+
   const search = document.getElementById("app-search");
   const status = document.getElementById("app-status");
   const counter = document.getElementById("filter-count");
   if (!(search instanceof HTMLInputElement) || !(status instanceof HTMLSelectElement)) return;
   const rows = Array.from(document.querySelectorAll("[data-application-row]"));
+  if (rows.length === 0) return;
+  const table = document.querySelector(".table-wrap");
+  const empty = document.createElement("p");
+  empty.className = "filter-empty";
+  empty.setAttribute("role", "status");
+  empty.textContent = "No applications match these filters. Clear the search or choose another status.";
+  empty.hidden = true;
+  if (table) table.after(empty);
   const filter = function() {
     const query = search.value.trim().toLowerCase();
     let visible = 0;
@@ -189,6 +262,7 @@ export const dashboardUiScript = `document.addEventListener("submit", function(e
       if (matches) visible++;
     });
     if (counter) counter.textContent = visible + " of " + rows.length + " applications shown";
+    empty.hidden = visible !== 0;
   };
   search.addEventListener("input", filter);
   status.addEventListener("change", filter);
@@ -197,5 +271,5 @@ export const dashboardUiScript = `document.addEventListener("submit", function(e
 
 /** Recovery is intentionally operator-assisted: no unauthenticated reset links. */
 export function recoveryPage(): string {
-  return document("Operator password recovery", `<div class="login-wrap"><section class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><h1 style="margin-top:28px">Reset operator access</h1><p class="sub">For security, this deployment does not offer email-based admin recovery. The service administrator must rotate the password hash through Render.</p><ol><li>Generate a new Argon2id hash in your trusted Auth Service terminal.</li><li>Update <code>DASHBOARD_OPERATOR_PASSWORD_HASH</code> in Render's Environment settings.</li><li>Redeploy the service, then sign in with the newly chosen password.</li></ol><div class="notice warn">Use a unique strong password. Do not enter your password into third-party hash generators.</div><a class="btn light" href="/dashboard/login">← Back to sign in</a></section></div>`);
+  return document("Operator password recovery", `<div class="login-wrap"><section class="login-card"><div class="brand"><div class="mark">✳</div> Auth Garden</div><h1 style="margin-top:28px">Reset operator access</h1><p class="sub">For security, this deployment does not offer email-based admin recovery. The service administrator must rotate the password hash through Render.</p><ol><li>Generate a new Argon2id hash in your trusted Auth Service terminal.</li><li>Update <code>DASHBOARD_OPERATOR_PASSWORD_HASH</code> in Render's Environment settings.</li><li>Redeploy the service, then sign in with the newly chosen password.</li></ol><div class="notice warn">Use a unique strong password. Do not enter your password into third-party hash generators.</div><a class="btn light" href="/dashboard/login">← Back to sign in</a></section>${siteFooter}</div>`);
 }

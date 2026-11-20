@@ -19,6 +19,30 @@ describe('Auth Garden operator UI', () => {
     expect(html).toContain('DASHBOARD_OPERATOR_PASSWORD_HASH');
     expect(html).not.toContain('name="password"');
   });
+  it('shows a clear no-applications state without fabricating projects', async () => {
+    const { appListPage } = await import('../../src/dashboard/views.js');
+    const html = appListPage([], '', 'test-csrf-token');
+    expect(html).toContain('No Auth Garden applications are registered');
+    expect(html).toContain('Create your first application');
+    expect(html).toContain('Notification Service');
+    expect(html).toContain('0 projects');
+    expect(html).not.toContain('data-application-row');
+  });
+  it('provides a website footer on authenticated and sign-in pages', () => {
+    for (const html of [layout('Dashboard', 'content'), loginPage()]) {
+      expect(html).toContain('aria-label="Website footer"');
+      expect(html).toContain('API documentation');
+      expect(html).toContain('github.com/Arpitruh/Auth-Service');
+    }
+  });
+  it('adds accessible skeleton navigation and prevents duplicate submissions', () => {
+    expect(dashboardUiScript).toContain('nav-progress');
+    expect(dashboardUiScript).toContain('loading-bar');
+    expect(dashboardUiScript).toContain('aria-live');
+    expect(dashboardUiScript).toContain('event.preventDefault()');
+    expect(dashboardUiScript).toContain('setAttribute("aria-busy", "true")');
+    expect(dashboardUiScript).toContain('pageshow');
+  });
   it('uses external safe submit feedback', () => {
     expect(dashboardUiScript).toContain('is-submitting');
     expect(dashboardUiScript).toContain('submitter.disabled');
