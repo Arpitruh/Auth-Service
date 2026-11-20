@@ -43,6 +43,25 @@ describe('Auth Garden operator UI', () => {
     expect(dashboardUiScript).toContain('setAttribute("aria-busy", "true")');
     expect(dashboardUiScript).toContain('pageshow');
   });
+  it('keeps the sidebar pinned while only main content scrolls', () => {
+    const html = layout('Applications', 'content', 'applications', 'csrf-token');
+    expect(html).toContain('id="auth-shell"');
+    expect(html).toContain('id="auth-sidebar"');
+    expect(html).toContain('class="sidebar-toggle"');
+    expect(html).toContain('class="mobile-sidebar-toggle"');
+    expect(html).toContain('class="sidebar-backdrop"');
+    expect(html).toContain('aria-controls="auth-sidebar"');
+    expect(html).toContain('class="main"');
+  });
+  it('supports collapsing navigation and accessible mobile dismissal', () => {
+    expect(dashboardUiScript).toContain('auth-garden-sidebar');
+    expect(dashboardUiScript).toContain('window.localStorage.setItem');
+    expect(dashboardUiScript).toContain('shell.dataset.sidebar');
+    expect(dashboardUiScript).toContain('shell.dataset.mobileSidebar');
+    expect(dashboardUiScript).toContain('aria-expanded');
+    expect(dashboardUiScript).toContain('event.key === "Escape"');
+    expect(dashboardUiScript).toContain('syncSidebar()');
+  });
   it('uses external safe submit feedback', () => {
     expect(dashboardUiScript).toContain('is-submitting');
     expect(dashboardUiScript).toContain('submitter.disabled');
