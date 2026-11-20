@@ -52,6 +52,12 @@ describe.skipIf(process.env.RUN_DB_TESTS !== '1')('registration outbox persisten
       });
       expect(first.deliveredAt).toBeNull();
 
+      // Other CI suites can create pending users at the same time. Limit
+      // this relay exercise to our row, rather than intercepting their events.
+      vi.spyOn(prisma, '$queryRaw')
+        .mockResolvedValueOnce([{ id: first.id, userId: id, recipient: email, attempts: 1 }])
+        .mockResolvedValueOnce([{ id: first.id, userId: id, recipient: email, attempts: 2 }])
+        .mockResolvedValue([]);
       await dispatchRegistrationEvents();
       expect(mockedFetch).toHaveBeenCalledTimes(1);
       const afterFailure = await prisma.registrationEventOutbox.findUniqueOrThrow({
@@ -85,6 +91,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== '1')('registration outbox persisten
       await dispatchRegistrationEvents();
       expect(mockedFetch).toHaveBeenCalledTimes(2);
     } finally {
+      vi.restoreAllMocks();
       globalThis.fetch = originalFetch;
       Object.assign(ENV, {
         NOTIFICATION_SERVICE_URL: originalUrl,
