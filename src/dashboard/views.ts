@@ -183,24 +183,75 @@ export function appUsersPage(
 }
 
 /** External JS is permitted by our strict CSP; no inline scripts or unsafe-inline. */
-export const dashboardUiScript = `document.addEventListener("submit", function(event) {
-  const form = event.target;
-  if (!(form instanceof HTMLFormElement) || form.dataset.submitting === "1") return;
-  if (!form.checkValidity()) return;
-  form.dataset.submitting = "1";
-  form.classList.add("is-submitting");
-  const submitter = event.submitter;
-  if (submitter instanceof HTMLButtonElement) {
-    // Disable after the submit event so the browser includes its form values.
-    setTimeout(function() { submitter.disabled = true; }, 0);
+export const dashboardUiScript = `(function() {
+  // Progressive enhancement: navigation and forms still work without JS.
+  const overlay = document.createElement("div");
+  overlay.className = "nav-progress";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.innerHTML = '<div class="nav-progress-card"><strong id="progress-title">Loading your workspace…</strong><p class="sub">Getting the next page ready.</p><div class="loading-bar full"></div><div class="loading-bar medium"></div><div class="loading-bar short"></div></div>';
+  document.body.appendChild(overlay);
+  function loading(message) {
+    const title = document.getElementById("progress-title");
+    if (title) title.textContent = message;
+    overlay.setAttribute("aria-hidden", "false");
   }
-});
-(function() {
+  function reset() {
+    overlay.setAttribute("aria-hidden", "true");
+    document.querySelectorAll("form.is-submitting").forEach(function(form) {
+      form.classList.remove("is-submitting");
+      form.dataset.submitting = "0";
+      form.querySelectorAll("button[aria-busy=true]").forEach(function(button) {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      });
+    });
+  }
+  window.addEventListener("pageshow", reset);
+
+  document.addEventListener("submit", function(event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.dataset.submitting === "1") { event.preventDefault(); return; }
+    if (!form.checkValidity()) return;
+    form.dataset.submitting = "1";
+    form.classList.add("is-submitting");
+    const submitter = event.submitter instanceof HTMLButtonElement
+      ? event.submitter : form.querySelector("button[type=submit], button:not([type])");
+    if (submitter instanceof HTMLButtonElement) {
+      submitter.setAttribute("aria-busy", "true");
+      // Defer disabled state so the browser can capture submitter form values.
+      setTimeout(function() { submitter.disabled = true; }, 0);
+    }
+    loading(form.action.includes("/login") ? "Signing in securely…" :
+      form.action.includes("/logout") ? "Signing out…" : "Saving your changes…");
+  });
+
+  document.addEventListener("click", function(event) {
+    if (!(event.target instanceof Element)) return;
+    const link = event.target.closest("a[href]");
+    if (!(link instanceof HTMLAnchorElement) || event.defaultPrevented ||
+      event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+      (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin || url.pathname === location.pathname && url.search === location.search) return;
+    loading("Opening " + (link.textContent.trim() || "page") + "…");
+  });
+
   const search = document.getElementById("app-search");
   const status = document.getElementById("app-status");
   const counter = document.getElementById("filter-count");
   if (!(search instanceof HTMLInputElement) || !(status instanceof HTMLSelectElement)) return;
   const rows = Array.from(document.querySelectorAll("[data-application-row]"));
+  if (rows.length === 0) return;
+  const table = document.querySelector(".table-wrap");
+  const empty = document.createElement("p");
+  empty.className = "filter-empty";
+  empty.setAttribute("role", "status");
+  empty.textContent = "No applications match these filters. Clear the search or choose another status.";
+  empty.hidden = true;
+  if (table) table.after(empty);
   const filter = function() {
     const query = search.value.trim().toLowerCase();
     let visible = 0;
@@ -211,6 +262,7 @@ export const dashboardUiScript = `document.addEventListener("submit", function(e
       if (matches) visible++;
     });
     if (counter) counter.textContent = visible + " of " + rows.length + " applications shown";
+    empty.hidden = visible !== 0;
   };
   search.addEventListener("input", filter);
   status.addEventListener("change", filter);
