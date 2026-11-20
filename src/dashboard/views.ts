@@ -13,11 +13,14 @@ const css = String.raw`
 :root{--cream:#EBEBD8;--olive:#637545;--forest:#455230;--sage:#9BA685;--white:#fbfcf5;--ink:#28311f}
 *{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
 a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.65;cursor:wait}.nav-logout{margin-top:auto}.nav-logout button{width:100%;border:1px solid #9BA685;background:transparent;color:#fff;text-align:left;padding:12px 15px;border-radius:10px}.nav-logout button:hover{background:rgba(255,255,255,.12)}.busy-note{display:none;margin-left:8px}.is-submitting .busy-note{display:inline}.auth-recovery{display:block;text-align:center;margin-top:15px;font-size:13px;text-decoration:underline;color:var(--forest)}
-.shell{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:100vh}.aside{background:var(--forest);color:#f9f9ec;padding:30px 23px;display:flex;flex-direction:column;gap:42px}
+.shell{display:grid;grid-template-columns:245px minmax(0,1fr);height:100vh;height:100dvh;overflow:hidden;transition:grid-template-columns .22s ease}.aside{background:var(--forest);color:#f9f9ec;padding:24px 16px;display:flex;flex-direction:column;gap:26px;height:100%;min-height:0;overflow:hidden}.shell[data-sidebar="collapsed"]{grid-template-columns:80px minmax(0,1fr)}
+.aside-brand-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.aside .brand{min-width:0;white-space:nowrap;overflow:hidden}.aside .brand-label{overflow:hidden;text-overflow:ellipsis}.sidebar-toggle,.mobile-sidebar-toggle{border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.1);color:#fff;border-radius:9px;padding:8px;min-width:36px;min-height:36px;display:inline-grid;place-items:center;flex-shrink:0}.sidebar-toggle:hover,.mobile-sidebar-toggle:hover{background:rgba(255,255,255,.22)}.sidebar-toggle-icon{font-size:20px;line-height:1}
+.shell[data-sidebar="collapsed"] .aside{padding:24px 13px}.shell[data-sidebar="collapsed"] .aside-brand-row{flex-direction:column;gap:16px}.shell[data-sidebar="collapsed"] .aside .brand-label,.shell[data-sidebar="collapsed"] .nav-label,.shell[data-sidebar="collapsed"] .asidefoot,.shell[data-sidebar="collapsed"] .logout-label,.shell[data-sidebar="collapsed"] .nav-logout .busy-note{display:none}.shell[data-sidebar="collapsed"] .nav a{justify-content:center;padding:12px}.shell[data-sidebar="collapsed"] .nav-logout button{display:grid;place-items:center;padding:10px}.shell[data-sidebar="collapsed"] .nav a span:first-child{font-size:23px}
+.mobile-sidebar-toggle{display:none;background:var(--forest);border-color:var(--forest)}.sidebar-mobile-bar{display:none}.sidebar-backdrop{display:none}
 .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.4px;font-size:21px}.mark{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--sage);color:var(--forest);font-size:24px}
 .nav{display:grid;gap:7px}.nav a{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:11px;color:#e3e9d9}
 .nav a.active,.nav a:hover{background:rgba(235,235,216,.15);color:#fff}.nav span{font-size:20px}.asidefoot{margin-top:auto;color:#d0dac5;font-size:12px}
-.main{padding:39px clamp(22px,5vw,70px) 22px;max-width:1500px;width:100%;margin:0 auto;min-width:0;display:flex;flex-direction:column;min-height:100vh}.main-content{flex:1;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:34px}
+.main{padding:39px clamp(22px,5vw,70px) 22px;max-width:1500px;width:100%;margin:0 auto;min-width:0;min-height:0;height:100%;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column}.main-content{flex:1;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:34px}
 .eyebrow{text-transform:uppercase;font-weight:700;letter-spacing:2px;font-size:11px;color:var(--olive)}h1{font-size:clamp(29px,4vw,43px);letter-spacing:-1.7px;line-height:1.12;margin:5px 0 10px;color:var(--forest)}h2{font-size:20px;letter-spacing:-.5px;margin:0 0 14px}
 .sub{color:#69735f;margin:0 0 24px}.btn{display:inline-flex;justify-content:center;align-items:center;gap:10px;background:var(--olive);color:white;border:0;border-radius:11px;padding:12px 18px;font-weight:700}
 .btn:hover{background:var(--forest)}.btn.light{background:var(--cream);color:var(--forest);border:1px solid #b4bea4}.btn.danger{background:#8d5548}
@@ -58,8 +61,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--olive);box-shadow:0 0
 .loading-bar.short{width:45%}.loading-bar.medium{width:75%}.loading-bar.full{height:22px;width:100%}
 .form-error{border-radius:9px;padding:12px;background:#f6dfd6;color:#893d2e;font-size:13px}.filter-empty{padding:22px;text-align:center;color:#647454}
 @keyframes auth-spin{to{transform:rotate(360deg)}}@keyframes auth-shimmer{to{background-position-x:-220%}}
-@media(prefers-reduced-motion:reduce){.loading-bar,.btn[aria-busy=true]::before,button[aria-busy=true]::before{animation:none!important}.btn,.nav a,.appname{transition:none!important}}
-@media(max-width:920px){.shell{grid-template-columns:1fr}.aside{padding:17px;gap:13px}.nav{display:flex;flex-wrap:wrap}.asidefoot{display:none}.main{padding:25px}.cards{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.loading-bar,.btn[aria-busy=true]::before,button[aria-busy=true]::before{animation:none!important}.btn,.nav a,.appname,.shell,.aside{transition:none!important}}
+@media(max-width:920px){.shell,.shell[data-sidebar="collapsed"]{grid-template-columns:minmax(0,1fr)}.aside{position:fixed;inset:0 auto 0 0;width:min(285px,85vw);z-index:80;padding:24px 16px;transform:translateX(-105%);transition:transform .22s ease;box-shadow:12px 0 40px #1b241733}.shell[data-mobile-sidebar="open"] .aside{transform:translateX(0)}.shell[data-sidebar="collapsed"] .aside{padding:24px 16px}.shell[data-sidebar="collapsed"] .aside-brand-row{flex-direction:row}.shell[data-sidebar="collapsed"] .aside .brand-label,.shell[data-sidebar="collapsed"] .nav-label,.shell[data-sidebar="collapsed"] .asidefoot,.shell[data-sidebar="collapsed"] .logout-label{display:initial}.shell[data-sidebar="collapsed"] .nav a{justify-content:flex-start;padding:13px 15px}.shell[data-sidebar="collapsed"] .nav-logout button{display:block;padding:12px 15px}.nav{display:grid}.asidefoot{display:block}.main{padding:25px}.cards{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.sidebar-mobile-bar{display:flex;align-items:center;gap:12px;margin-bottom:22px}.mobile-sidebar-toggle{display:inline-grid}.sidebar-mobile-bar strong{color:var(--forest)}.sidebar-backdrop{position:fixed;inset:0;z-index:79;background:#17201488;display:none;border:0}.shell[data-mobile-sidebar="open"] .sidebar-backdrop{display:block}}
 @media(max-width:600px){.top,.panelhead{flex-direction:column;align-items:flex-start}table{font-size:12px}td,th{padding:10px 4px}.auth-foot-grid{grid-template-columns:1fr 1fr}.auth-foot-grid>div:first-child{grid-column:1/-1}.main{padding:22px 17px 10px}.empty-state{padding:30px 16px}}
 `;
 const siteFooter = "<footer class=\"auth-foot\" aria-label=\"Website footer\"><div class=\"auth-foot-grid\"><div><strong>✳ Auth Garden</strong><p>A home for your application identities. Set up clients, manage access and keep each project's user database separate.</p></div><div><strong>Platform</strong><nav aria-label=\"Platform links\"><a href=\"/dashboard\">Applications</a><a href=\"/dashboard/new\">Create application</a><a href=\"/health\" target=\"_blank\" rel=\"noopener noreferrer\">Service health</a></nav></div><div><strong>Resources</strong><nav aria-label=\"Resource links\"><a href=\"/docs\" target=\"_blank\" rel=\"noopener noreferrer\">API documentation</a><a href=\"https://github.com/Arpitruh/Auth-Service\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub repository</a></nav></div></div><div class=\"auth-foot-line\"><span>© 2026 Auth Garden. Built for isolated app authentication.</span><span>Secure control plane · Auth Service</span></div></footer>";
@@ -74,13 +77,13 @@ export function layout(title: string, body: string, active = "applications", csr
   const links = nav
     .map(
       ([key, href, icon, label]) =>
-        `<a class="${active === key ? "active" : ""}" href="${href}"><span>${icon}</span>${label}</a>`,
+        `<a class="${active === key ? "active" : ""}" href="${href}" title="${label}" ${active === key ? 'aria-current="page"' : ""}><span aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></a>`,
     )
     .join("");
-  const account = csrf ? `<form class="nav-logout" method="post" action="/dashboard/logout"><input type="hidden" name="_csrf" value="${esc(csrf)}"><button type="submit">Sign out securely →<span class="busy-note">Signing out…</span></button></form>` : "";
+  const account = csrf ? `<form class="nav-logout" method="post" action="/dashboard/logout"><input type="hidden" name="_csrf" value="${esc(csrf)}"><button type="submit"><span aria-hidden="true">↪</span><span class="logout-label">Sign out securely</span><span class="busy-note">Signing out…</span></button></form>` : "";
   return document(
     title,
-    `<div class="shell"><aside class="aside"><div class="brand"><div class="mark">✳</div> Auth Garden</div><nav class="nav" aria-label="Main navigation">${links}</nav>${account}<div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><main class="main"><div class="main-content">${body}</div>${siteFooter}</main></div>`,
+    `<div class="shell" id="auth-shell" data-sidebar="expanded" data-mobile-sidebar="closed"><aside class="aside" id="auth-sidebar" aria-label="Application sidebar"><div class="aside-brand-row"><div class="brand"><div class="mark">✳</div><span class="brand-label">Auth Garden</span></div><button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-controls="auth-sidebar" aria-expanded="true" title="Toggle sidebar"><span class="sidebar-toggle-icon" aria-hidden="true">☰</span></button></div><nav class="nav" aria-label="Main navigation">${links}</nav>${account}<div class="asidefoot">CONTROL PLANE · ISOLATED IDENTITIES<br>Managed securely across your apps</div></aside><button type="button" class="sidebar-backdrop" aria-label="Close navigation menu"></button><main class="main"><div class="sidebar-mobile-bar"><button class="mobile-sidebar-toggle" type="button" aria-controls="auth-sidebar" aria-expanded="false" aria-label="Open navigation menu">☰</button><strong>Auth Garden</strong></div><div class="main-content">${body}</div>${siteFooter}</main></div>`,
   );
 }
 export function status(value: string): string {
@@ -192,6 +195,45 @@ export const dashboardUiScript = `(function() {
   overlay.setAttribute("aria-hidden", "true");
   overlay.innerHTML = '<div class="nav-progress-card"><strong id="progress-title">Loading your workspace…</strong><p class="sub">Getting the next page ready.</p><div class="loading-bar full"></div><div class="loading-bar medium"></div><div class="loading-bar short"></div></div>';
   document.body.appendChild(overlay);
+  const shell = document.getElementById("auth-shell");
+  const toggle = document.querySelector(".sidebar-toggle");
+  const mobileToggle = document.querySelector(".mobile-sidebar-toggle");
+  const backdrop = document.querySelector(".sidebar-backdrop");
+  if (shell && toggle && mobileToggle && backdrop) {
+    const mobile = window.matchMedia("(max-width: 920px)");
+    let collapsed = false;
+    try { collapsed = window.localStorage.getItem("auth-garden-sidebar") === "collapsed"; } catch {}
+    function syncSidebar() {
+      shell.dataset.sidebar = collapsed ? "collapsed" : "expanded";
+      const expanded = !collapsed;
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.setAttribute("aria-label", expanded ? "Collapse sidebar" : "Expand sidebar");
+      const mobileOpen = shell.dataset.mobileSidebar === "open";
+      mobileToggle.setAttribute("aria-expanded", String(mobileOpen));
+      mobileToggle.setAttribute("aria-label", mobileOpen ? "Close navigation menu" : "Open navigation menu");
+      backdrop.setAttribute("aria-hidden", String(!mobileOpen));
+    }
+    toggle.addEventListener("click", function() {
+      if (mobile.matches) shell.dataset.mobileSidebar = "closed";
+      else {
+        collapsed = !collapsed;
+        try { window.localStorage.setItem("auth-garden-sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
+      }
+      syncSidebar();
+    });
+    mobileToggle.addEventListener("click", function() {
+      shell.dataset.mobileSidebar = shell.dataset.mobileSidebar === "open" ? "closed" : "open";
+      syncSidebar();
+    });
+    backdrop.addEventListener("click", function() { shell.dataset.mobileSidebar = "closed"; syncSidebar(); });
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape" && shell.dataset.mobileSidebar === "open") {
+        shell.dataset.mobileSidebar = "closed"; syncSidebar(); mobileToggle.focus();
+      }
+    });
+    mobile.addEventListener("change", function() { shell.dataset.mobileSidebar = "closed"; syncSidebar(); });
+    syncSidebar();
+  }
   function loading(message) {
     const title = document.getElementById("progress-title");
     if (title) title.textContent = message;
