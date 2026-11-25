@@ -1,5 +1,8 @@
 # Auth Service
 
+**Authentication and session management API for Node.js applications.** Built with Express, TypeScript and PostgreSQL, with JWT authentication, refresh token rotation and application isolation.
+
+
 A production-ready authentication and session-management service built with Express 5, TypeScript, Prisma 7 (PostgreSQL), and JWTs. It provides registration, login, refresh-token rotation with reuse detection, password reset, session management, and role-based admin endpoints.
 
 Live demo: `https://login-service-8akx.onrender.com` (free tier — the first request after idle may take ~30-60s to cold-start).
