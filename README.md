@@ -1,17 +1,14 @@
 # Auth Service
 
-**Authentication and session management API for Node.js applications.** Built with Express, TypeScript and PostgreSQL, with JWT authentication, refresh token rotation and application isolation.
-
-
-A production-ready authentication and session-management service built with Express 5, TypeScript, Prisma 7 (PostgreSQL), and JWTs. It provides registration, login, refresh-token rotation with reuse detection, password reset, session management, and role-based admin endpoints.
+A Node.js authentication API built with Express, TypeScript, Prisma and PostgreSQL. I use this project to work through registration, login, password reset, JWT refresh-token rotation and session management across applications.
 
 Live demo: `https://login-service-8akx.onrender.com` (free tier — the first request after idle may take ~30-60s to cold-start).
 
-## Application isolation (Phases 1–3 foundation)
+## Application isolation
 
 A separate PostgreSQL control-plane registry is now available behind optional `CONTROL_PLANE_DATABASE_URL`, with `npm run control:migrate` for its own versioned schema. It tracks application registrations, exact redirect URIs, provisioning status, audit events and database secret **references**, never app-user records. Current login flows remain on the original legacy database. Internal Neon/PostgreSQL provisioning and a separate backend-only tenant routing API are now available. The dashboard and hosted OIDC flows are **not yet implemented**. See [CONTROL_PLANE_ARCHITECTURE.md](./CONTROL_PLANE_ARCHITECTURE.md).
 
-## Auth Garden Dashboard (Phase 5, opt-in)
+## Auth Garden dashboard (opt-in)
 
 A protected operator control panel is available at `/dashboard`, featuring
 isolated app registration, managed Neon/existing PostgreSQL provisioning,
@@ -21,11 +18,11 @@ audited role changes. The four-theme palette is #EBEBD8, #637545, #455230,
 a control DB and (in production) Redis are configured. Read
 [PHASE_5_DASHBOARD.md](./PHASE_5_DASHBOARD.md) before exposing it to users.
 
-## Hosted OIDC sign-in (Phase 4, opt-in)
+## Hosted OIDC sign-in (opt-in)
 
 The auth server now includes a hosted login form and an initial **Authorization Code + PKCE S256** flow. It publishes OpenID discovery, an RS256 JWKS, short-lived ID/access tokens and UserInfo. It is disabled until RSA signing, issuer and Redis are configured. Users remain in their isolated application databases, and **SSO is disabled**. This is not yet a production-certified provider; see [PHASE_4_OIDC.md](./PHASE_4_OIDC.md).
 
-## Verified multi-application routing (Phase 3)
+## Multi-application routing
 
 The backend-only `/api/v2/tenant/register`, `/login` and `/me` routes verify a registered application **client ID plus its private server-side key**, select its own Auth database through bounded Prisma pooling, and issue short-lived application-audience-scoped JWTs. Legacy `/api/v1/auth/*` stays unchanged. **Never embed the app key in browser/mobile code.** See [PHASE_3_ROUTING.md](./PHASE_3_ROUTING.md). Tenant refresh sessions, hosted login, OIDC/PKCE and the Auth Dashboard are upcoming.
 
